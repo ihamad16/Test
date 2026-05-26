@@ -1,8 +1,9 @@
 //==============================================================================
 //  FC 26 - Splash Screen (Option 1: Simple Text)
 //  Platform    : PlayStation / Cronus Zen
-//  Version     : 1.1
-//  Description : يعرض "FC 26 / VIP" على شاشة OLED عند تشغيل السكريبت
+//  Version     : 1.2
+//  Description : يعرض "FC 26 / VIP" عند تشغيل السكريبت
+//  Note        : بانتظار تأكيد صيغة OLED text الصحيحة من Dark.Angel
 //==============================================================================
 
 define SPLASH_DURATION = 3000;   // مدة عرض الشعار بالميلي ثانية
@@ -11,19 +12,24 @@ int splash_done = FALSE;
 int splash_timer = 0;
 
 init {
-    cls_oled(0);
-    // Cronus Zen OLED text: printf(row, column, font, "text")
-    // row: 0-7  |  column: 0-20  |  font: 0=small, 1=medium, 2=large
-    printf(2, 5, 2, "FC 26");
-    printf(4, 7, 2, "VIP");
+    cls_oled(0);                 // مسح شاشة OLED (مؤكد شغّال)
+    printf("FC 26 VIP");         // يطبع في Zen Studio debug terminal
 }
 
 main {
     if(!splash_done) {
         splash_timer = splash_timer + get_rtime();
         if(splash_timer >= SPLASH_DURATION) {
-            cls_oled(0);
             splash_done = TRUE;
         }
     }
 }
+
+//------------------------------------------------------------------------------
+// صيغ OLED text محتملة (للتجربة بعد تأكيد الصيغة من Dark.Angel):
+//
+// puts_oled("FC 26");
+// print_oled(2, 5, 2, "FC 26");
+// oled_print(28, 16, "FC 26");
+// printf_oled(2, 5, 2, "FC 26");
+//------------------------------------------------------------------------------
