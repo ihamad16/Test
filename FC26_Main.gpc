@@ -24,9 +24,8 @@
 //  [1] Sprint Control → R2+L2 = جري بنسبة (10..100)
 //  [2] Button Remap   → كل زر يتحول لأي زر آخر
 //  [3] Finesse Shot   → R1+SQUARE — Power + Shortcut
-//  [4] Touch Swipes   → 4 سحبات = 4 مهارات افتراضية
-//  [5] Trivela Shot   → L2+SQUARE — Power + Shortcut
-//  [6] Skills         → McGeady L/R (Smart: تدوير حسب LS)
+//  [4] Trivela Shot   → L2+SQUARE — Power + Shortcut
+//  [5] Skills         → McGeady L/R (Smart: تدوير حسب LS)
 //
 //==============================================================================
 
@@ -41,7 +40,7 @@ define PaceCtrol    = PS4_L2;
 //------------------------------------------------------------------------------
 define MENU_TIMEOUT     = 8000;
 define SCREEN_SAVER_MS  = 5000;
-define MAX_MODS         = 5;
+define MAX_MODS         = 4;
 define TGT_DEFAULT      = 8;
 define SH_DISABLED      = 15;       // 0..10 = أزرار، 11..14 = سحبات، 15 = Off
 define SWIPE_THRESHOLD  = 30;       // الحد الأدنى لاعتبار الحركة سحبة
@@ -113,8 +112,7 @@ int spin_step1_y      = 0;
 int spin_step2_x      = 0;
 int spin_step2_y      = 0;
 
-// Mod 4: Touchpad Swipes
-int mod_swipe         = 0;
+// Touchpad swipe detection (يُستخدم كاختصار في الفينس/ترفيلا/المهارات)
 int touch_was_active  = FALSE;
 int touch_is_active   = FALSE;
 int touch_now_x       = 0;
@@ -162,10 +160,8 @@ const string STR_DISABLED   = "Disabled";
 const string STR_MOD_SPRINT  = "Sprint Control";
 const string STR_MOD_REMAP   = "Button Remap";
 const string STR_MOD_FINESSE = "Finesse Shot";
-const string STR_MOD_SWIPE   = "Touch Swipes";
 const string STR_MOD_TRIVELA = "Trivela Shot";
 const string STR_MOD_SKILLS  = "Skills";
-const string STR_SWIPE_INFO  = "4-Dir Skills";
 const string STR_SK_LBL      = "Sk:";
 const string STR_DBL_LBL     = "Dbl:";
 
@@ -226,7 +222,6 @@ init {
     mod_finesse      = get_pvar(SPVAR_12, 0, 1,    0);
     finesse_power    = get_pvar(SPVAR_13, 50, 1500, 265);
     finesse_shortcut = get_pvar(SPVAR_40, 0, 15,   15);
-    mod_swipe        = get_pvar(SPVAR_15, 0, 1,    0);
     mod_trivela      = get_pvar(SPVAR_16, 0, 1,    0);
     trivela_power    = get_pvar(SPVAR_17, 50, 1500, 265);
     trivela_shortcut = get_pvar(SPVAR_41, 0, 15,   15);
@@ -333,9 +328,8 @@ function run_features() {
         }
     }
 
-    // كشف السحبات أولاً إذا أي مود يحتاجها
-    if(mod_swipe ||
-       (mod_finesse && finesse_shortcut >= 11 && finesse_shortcut <= 14) ||
+    // كشف السحبات أولاً إذا أي مود يحتاجها كاختصار
+    if((mod_finesse && finesse_shortcut >= 11 && finesse_shortcut <= 14) ||
        (mod_trivela && trivela_shortcut >= 11 && trivela_shortcut <= 14) ||
        (mod_skills && any_skill_uses_swipe())) {
         detect_swipes();
@@ -366,14 +360,6 @@ function run_features() {
 
     // Skills mod: كل مهارة تتفعل بضغطة الـ Shortcut الخاص بها
     if(mod_skills) run_skills();
-
-    // mod_swipe يطلق المهارات الافتراضية إن لم تُستهلك السحبة
-    if(mod_swipe) {
-        if(last_swipe == 1)      combo_run(SwipeUpCombo);
-        else if(last_swipe == 2) combo_run(SwipeDownCombo);
-        else if(last_swipe == 3) combo_run(SwipeLeftCombo);
-        else if(last_swipe == 4) combo_run(SwipeRightCombo);
-    }
 }
 
 //==============================================================================
@@ -412,39 +398,6 @@ function detect_swipes() {
     }
 
     touch_was_active = touch_is_active;
-}
-
-//------------------------------------------------------------------------------
-// SWIPE COMBOS (مهارات افتراضية)
-//------------------------------------------------------------------------------
-// Swipe Up = Rainbow Flick (لمس فوق)
-combo SwipeUpCombo {
-    set_val(PS4_RY, -100); wait(50);
-    set_val(PS4_RY, -100); wait(60);
-    set_val(PS4_RY,  100); wait(50);
-    set_val(PS4_RY,    0);
-}
-
-// Swipe Down = Drag Back (سحب الكرة للخلف)
-combo SwipeDownCombo {
-    set_val(PS4_R1, 100);
-    set_val(PS4_RY, 100); wait(150);
-    set_val(PS4_R1, 0);
-    set_val(PS4_RY, 0);
-}
-
-// Swipe Left = Reverse Elastico (من يمين لليسار)
-combo SwipeLeftCombo {
-    set_val(PS4_RX,  100); wait(60);
-    set_val(PS4_RX, -100); wait(60);
-    set_val(PS4_RX,    0);
-}
-
-// Swipe Right = Elastico (من يسار لليمين)
-combo SwipeRightCombo {
-    set_val(PS4_RX, -100); wait(60);
-    set_val(PS4_RX,  100); wait(60);
-    set_val(PS4_RX,    0);
 }
 
 //==============================================================================
@@ -634,7 +587,7 @@ function check_finesse_shortcut() {
     if(finesse_shortcut == 8  && event_press(PS4_L3))       return 1;
     if(finesse_shortcut == 9  && event_press(PS4_R3))       return 1;
     if(finesse_shortcut == 10 && event_press(PS4_TOUCH))    return 1;
-    // اختصارات السحب: نمسح last_swipe بعد الاستهلاك حتى لا يطلقه mod_swipe أيضاً
+    // اختصارات السحب: نمسح last_swipe بعد الاستهلاك (تنظيف)
     if(finesse_shortcut == 11 && last_swipe == 1) { last_swipe = 0; return 1; }
     if(finesse_shortcut == 12 && last_swipe == 2) { last_swipe = 0; return 1; }
     if(finesse_shortcut == 13 && last_swipe == 3) { last_swipe = 0; return 1; }
@@ -901,7 +854,7 @@ function handle_menu_input() {
                 else                          cycle_finesse_dbl(-1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
-        } else if(menu_idx == 4) {
+        } else if(menu_idx == 3) {
             // Trivela: نفس الفينس
             if(event_press(PS4_DOWN)) {
                 trivela_opt_idx = 1 - trivela_opt_idx;
@@ -927,7 +880,7 @@ function handle_menu_input() {
                 }
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
-        } else if(menu_idx == 5) {
+        } else if(menu_idx == 4) {
             // Skills: ↑/↓ تبدل المهارة، ←/→ تغير اختصارها
             if(event_press(PS4_DOWN)) {
                 skill_idx = skill_idx + 1;
@@ -955,9 +908,8 @@ function toggle_mod(val) {
     if(menu_idx == 0) mod_sprint = val;
     else if(menu_idx == 1) mod_remap = val;
     else if(menu_idx == 2) mod_finesse = val;
-    else if(menu_idx == 3) mod_swipe = val;
-    else if(menu_idx == 4) mod_trivela = val;
-    else if(menu_idx == 5) mod_skills = val;
+    else if(menu_idx == 3) mod_trivela = val;
+    else if(menu_idx == 4) mod_skills = val;
 }
 
 function clamp_val(v, mn, mx) {
@@ -981,9 +933,8 @@ function draw_menu() {
     if(menu_idx == 0) draw_sprint_menu();
     else if(menu_idx == 1) draw_remap_menu();
     else if(menu_idx == 2) draw_finesse_menu();
-    else if(menu_idx == 3) draw_swipe_menu();
-    else if(menu_idx == 4) draw_trivela_menu();
-    else if(menu_idx == 5) draw_skills_menu();
+    else if(menu_idx == 3) draw_trivela_menu();
+    else if(menu_idx == 4) draw_skills_menu();
 }
 
 function draw_sprint_menu() {
@@ -1112,22 +1063,6 @@ function draw_skills_menu() {
                   OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
         }
     }
-}
-
-function draw_swipe_menu() {
-    print(center_x(12, OLED_FONT_SMALL_WIDTH), 4,
-          OLED_FONT_SMALL, OLED_WHITE, STR_MOD_SWIPE[0]);
-
-    if(mod_swipe > 0) {
-        print(center_x(7, OLED_FONT_SMALL_WIDTH), 22,
-              OLED_FONT_SMALL, OLED_WHITE, STR_ENABLED[0]);
-    } else {
-        print(center_x(8, OLED_FONT_SMALL_WIDTH), 22,
-              OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
-    }
-
-    print(center_x(12, OLED_FONT_SMALL_WIDTH), 40,
-          OLED_FONT_SMALL, OLED_WHITE, STR_SWIPE_INFO[0]);
 }
 
 function draw_btn_mapping(idx) {
@@ -1261,7 +1196,6 @@ function save_settings() {
     set_pvar(SPVAR_12, mod_finesse);
     set_pvar(SPVAR_13, finesse_power);
     set_pvar(SPVAR_40, finesse_shortcut);
-    set_pvar(SPVAR_15, mod_swipe);
     set_pvar(SPVAR_16, mod_trivela);
     set_pvar(SPVAR_17, trivela_power);
     set_pvar(SPVAR_41, trivela_shortcut);
