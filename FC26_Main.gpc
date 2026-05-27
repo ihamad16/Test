@@ -82,13 +82,13 @@ int remap_btn_idx  = 0;
 
 // Mod 3: Finesse Shot
 int mod_finesse       = 0;
-int finesse_power     = 300;   // 50..1500 ms (مدة الضغط على زر التسديد)
+int finesse_power     = 265;   // 50..1500 ms (مدة الضغط على زر التسديد)
 int finesse_shortcut  = 15;    // 0..10 = زر، 11..14 = سحبات، 15 = Disabled
 int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut
 
 // Mod 5: Trivela Shot (L2 + SQUARE) — نفس الفينس بس بـ L2
 int mod_trivela       = 0;
-int trivela_power     = 300;
+int trivela_power     = 265;
 int trivela_shortcut  = 15;
 int trivela_opt_idx   = 0;
 
@@ -185,11 +185,11 @@ init {
     tgt_square       = get_pvar(SPVAR_10, 0, 8,    8);
     tgt_triangle     = get_pvar(SPVAR_11, 0, 8,    8);
     mod_finesse      = get_pvar(SPVAR_12, 0, 1,    0);
-    finesse_power    = get_pvar(SPVAR_13, 50, 1500, 300);
+    finesse_power    = get_pvar(SPVAR_13, 50, 1500, 265);
     finesse_shortcut = get_pvar(SPVAR_14, 0, 15,   15);
     mod_swipe        = get_pvar(SPVAR_15, 0, 1,    0);
     mod_trivela      = get_pvar(SPVAR_16, 0, 1,    0);
-    trivela_power    = get_pvar(SPVAR_17, 50, 1500, 300);
+    trivela_power    = get_pvar(SPVAR_17, 50, 1500, 265);
     trivela_shortcut = get_pvar(SPVAR_18, 0, 15,   15);
 }
 
