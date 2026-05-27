@@ -256,8 +256,8 @@ function run_features() {
         // تشغيل الـ Shortcut
         if(check_finesse_shortcut()) combo_run(FinesseCombo);
 
-        // Cap على الضغطة اليدوية: R1 + SQUARE ما يتعدى finesse_power
-        if(get_val(PS4_R1) && get_val(PS4_SQUARE) && get_ptime(PS4_SQUARE) >= finesse_power) {
+        // Cap على ضغطة SQUARE: ما تتعدى finesse_power (مع R1 أو بدونه)
+        if(get_val(PS4_SQUARE) && get_ptime(PS4_SQUARE) >= finesse_power) {
             set_val(PS4_SQUARE, 0);
         }
     }
