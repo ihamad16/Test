@@ -75,7 +75,7 @@ int remap_btn_idx  = 0;
 
 // Mod 3: Finesse Shot
 int mod_finesse       = 0;
-int finesse_power     = 30;    // 10..100 ms (مدة الضغطة)
+int finesse_power     = 300;   // 50..1500 ms (مدة الضغط على زر التسديد)
 int finesse_shortcut  = 11;    // 0..10 = زر، 11 = Disabled
 int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut
 
@@ -151,7 +151,7 @@ init {
     tgt_square       = get_pvar(SPVAR_10, 0, 8,    8);
     tgt_triangle     = get_pvar(SPVAR_11, 0, 8,    8);
     mod_finesse      = get_pvar(SPVAR_12, 0, 1,    0);
-    finesse_power    = get_pvar(SPVAR_13, 10, 100, 30);
+    finesse_power    = get_pvar(SPVAR_13, 50, 1500, 300);
     finesse_shortcut = get_pvar(SPVAR_14, 0, 11,   11);
 }
 
@@ -465,7 +465,7 @@ function handle_menu_input() {
             }
             if(event_press(PS4_RIGHT)) {
                 if(finesse_opt_idx == 0) {
-                    finesse_power = clamp_val(finesse_power + 5, 10, 100);
+                    finesse_power = clamp_val(finesse_power + 50, 50, 1500);
                 } else {
                     cycle_shortcut(1);
                 }
@@ -473,7 +473,7 @@ function handle_menu_input() {
             }
             if(event_press(PS4_LEFT)) {
                 if(finesse_opt_idx == 0) {
-                    finesse_power = clamp_val(finesse_power - 5, 10, 100);
+                    finesse_power = clamp_val(finesse_power - 50, 50, 1500);
                 } else {
                     cycle_shortcut(-1);
                 }
