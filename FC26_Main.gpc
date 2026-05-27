@@ -228,11 +228,11 @@ init {
     tgt_triangle     = get_pvar(SPVAR_11, 0, 8,    8);
     mod_finesse      = get_pvar(SPVAR_12, 0, 1,    0);
     finesse_power    = get_pvar(SPVAR_13, 50, 1500, 265);
-    finesse_shortcut = get_pvar(SPVAR_14, 0, 15,   15);
+    finesse_shortcut = get_pvar(SPVAR_40, 0, 15,   15);
     mod_swipe        = get_pvar(SPVAR_15, 0, 1,    0);
     mod_trivela      = get_pvar(SPVAR_16, 0, 1,    0);
     trivela_power    = get_pvar(SPVAR_17, 50, 1500, 265);
-    trivela_shortcut = get_pvar(SPVAR_18, 0, 15,   15);
+    trivela_shortcut = get_pvar(SPVAR_41, 0, 15,   15);
     mod_skills       = get_pvar(SPVAR_19, 0, 1,    0);
     sk_spin_l        = get_pvar(SPVAR_30, 0, 15,   15);
     sk_spin_r        = get_pvar(SPVAR_31, 0, 15,   15);
@@ -242,7 +242,7 @@ init {
     sk_berba_r       = get_pvar(SPVAR_35, 0, 15,   15);
     sk_rainbow       = get_pvar(SPVAR_36, 0, 15,   15);
     sk_roulette      = get_pvar(SPVAR_37, 0, 15,   15);
-    finesse_dbl_btn  = get_pvar(SPVAR_28, 0, 11,   11);
+    finesse_dbl_btn  = get_pvar(SPVAR_42, 0, 11,   11);
 }
 
 //==============================================================================
@@ -1378,11 +1378,11 @@ function save_settings() {
     set_pvar(SPVAR_11, tgt_triangle);
     set_pvar(SPVAR_12, mod_finesse);
     set_pvar(SPVAR_13, finesse_power);
-    set_pvar(SPVAR_14, finesse_shortcut);
+    set_pvar(SPVAR_40, finesse_shortcut);
     set_pvar(SPVAR_15, mod_swipe);
     set_pvar(SPVAR_16, mod_trivela);
     set_pvar(SPVAR_17, trivela_power);
-    set_pvar(SPVAR_18, trivela_shortcut);
+    set_pvar(SPVAR_41, trivela_shortcut);
     set_pvar(SPVAR_19, mod_skills);
     set_pvar(SPVAR_30, sk_spin_l);
     set_pvar(SPVAR_31, sk_spin_r);
@@ -1392,5 +1392,5 @@ function save_settings() {
     set_pvar(SPVAR_35, sk_berba_r);
     set_pvar(SPVAR_36, sk_rainbow);
     set_pvar(SPVAR_37, sk_roulette);
-    set_pvar(SPVAR_28, finesse_dbl_btn);
+    set_pvar(SPVAR_42, finesse_dbl_btn);
 }
