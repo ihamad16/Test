@@ -137,12 +137,16 @@ const string SHOT_POWER_STR[] = {
     "Left Pow"   // 4
 };
 
-const string STR_ENABLED  = "Enabled";
-const string STR_DISABLED = "Disabled";
-const string STR_TITLE    = "FC 26 SCRIPT";
-const string STR_AUTHOR   = "by Hamad";
-const string STR_HINT     = "A/CROSS to Edit";
-const string STR_SAVED    = "SAVED";
+const string STR_ENABLED   = "Enabled";
+const string STR_DISABLED  = "Disabled";
+const string STR_TITLE     = "FC 26 SCRIPT";
+const string STR_AUTHOR    = "by Hamad";
+const string STR_HINT      = "A/CROSS to Edit";
+const string STR_SAVED     = "SAVED";
+const string STR_SCRIPT_ON = "SCRIPT ON";
+const string STR_SCRIPT_OFF= "SCRIPT OFF";
+const string STR_MOD_LBL   = "MOD:";
+const string STR_VAL_LBL   = "VAL:";
 
 //------------------------------------------------------------------------------
 // INIT BLOCK - تحميل الإعدادات من PVAR
@@ -204,12 +208,12 @@ main {
         cls_oled(0);
         if(script_on) {
             colourled(LED_GREEN);
-            printf(center_x(10, OLED_FONT_MEDIUM_WIDTH), 25,
-                   OLED_FONT_MEDIUM, OLED_WHITE, "SCRIPT ON");
+            printf(center_x(9, OLED_FONT_MEDIUM_WIDTH), 25,
+                   OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_ON[0]);
         } else {
             colourled(LED_RED);
             printf(center_x(10, OLED_FONT_MEDIUM_WIDTH), 25,
-                   OLED_FONT_MEDIUM, OLED_WHITE, "SCRIPT OFF");
+                   OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_OFF[0]);
         }
         set_val(PS4_PS, 0);
         saver_timer = 0;
@@ -566,11 +570,11 @@ function draw_status_line() {
 
 function draw_info_line() {
     // MOD:X  على اليسار
-    printf(4, 40, OLED_FONT_SMALL, OLED_WHITE, "MOD:");
+    printf(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_MOD_LBL[0]);
     print_num_at(menu_idx + 1, 32, 40, OLED_FONT_SMALL);
 
     // VAL على اليمين
-    printf(70, 40, OLED_FONT_SMALL, OLED_WHITE, "VAL:");
+    printf(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_VAL_LBL[0]);
     print_num_at(get_mod_value(menu_idx), 100, 40, OLED_FONT_SMALL);
 }
 
