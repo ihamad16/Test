@@ -545,8 +545,7 @@ function draw_menu() {
 }
 
 function draw_status_line() {
-    int st;
-    st = get_mod_status(menu_idx);
+    draw_st = get_mod_status(menu_idx);
 
     if(edit_open) {
         // عرض القيمة الحالية بخط كبير
@@ -555,9 +554,9 @@ function draw_status_line() {
         if(menu_idx == 2) {
             // Shot Power: عرض الحالة الحالية
             printf(center_x(9, OLED_FONT_MEDIUM_WIDTH), 22,
-                   OLED_FONT_MEDIUM, OLED_WHITE, SHOT_POWER_STR[st]);
+                   OLED_FONT_MEDIUM, OLED_WHITE, SHOT_POWER_STR[draw_st]);
         } else {
-            if(st > 0) {
+            if(draw_st > 0) {
                 printf(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
                        OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
             } else {
@@ -580,6 +579,8 @@ function draw_info_line() {
 
 // عرض رقم في مكان محدد
 int pn_buf, pn_i, pn_div;
+int draw_st;
+int draw_digits;
 const int8 ASCII_DIGITS[] = {48,49,50,51,52,53,54,55,56,57};
 
 function print_num_at(val, x, y, font) {
@@ -608,9 +609,8 @@ function print_num_at(val, x, y, font) {
 }
 
 function print_num_center(val, y) {
-    int digits;
-    digits = count_digits(val);
-    print_num_at(val, center_x(digits, OLED_FONT_LARGE_WIDTH), y, OLED_FONT_LARGE);
+    draw_digits = count_digits(val);
+    print_num_at(val, center_x(draw_digits, OLED_FONT_LARGE_WIDTH), y, OLED_FONT_LARGE);
 }
 
 function count_digits(n) {
