@@ -1,27 +1,22 @@
 //==============================================================================
-//  FC 26 - Main Script v1.0
+//  FC 26 - Sprint Control Only v2.0
 //  Author      : Hamad
 //  Platform    : PlayStation (PS4/PS5)
 //  Device      : Cronus Zen
-//  Description : 8 ميزات مع OLED Menu + حفظ PVAR
+//  Description : ميزة واحدة: التحكم بقوة الجري (R2+L2)
 //==============================================================================
 //
 //  قائمة التحكم:
+//  L2 + PS         → تشغيل/إطفاء السكريبت كاملاً
 //  L2 + OPTIONS    → فتح/إغلاق القائمة
-//  D-pad UP/DOWN   → التنقل بين الميزات
-//  D-pad LEFT/RIGHT → تشغيل/إطفاء أو تغيير قيمة
-//  CROSS (X)       → دخول وضع تعديل القيم
-//  CIRCLE (O)      → خروج وحفظ
+//  D-pad LEFT/RIGHT → تغيير ON/OFF
+//  CROSS (X)       → دخول وضع التعديل
+//  ←/→  (في التعديل) → ±10
+//  ↑/↓  (في التعديل) → ±1
+//  CIRCLE (O)      → خروج + حفظ
 //
-//  الميزات:
-//  [1] Sprint Ctrl   → R2+L2 = جري بنسبة قابلة للتعديل
-//  [2] Timed Finish  → التوقيت الأخضر التلقائي عند التسديد
-//  [3] Shot Power    → تحديد قوة التسديد (L1 + Dpad)
-//  [4] Penalty Mod   → ضربات جزاء بقوة محددة
-//  [5] Free Kick Mod → ركلات حرة (TopSpin/SideSpin/Knuckleball)
-//  [6] Elastico      → مهارة Elastico بالعصا اليمنى
-//  [7] Rainbow       → مهارة Rainbow Flick
-//  [8] Roulette      → مهارة Roulette
+//  الميزة:
+//  Sprint Control → R2 + L2 = جري بنسبة قابلة للضبط (30..100)
 //
 //==============================================================================
 
@@ -30,23 +25,12 @@
 //------------------------------------------------------------------------------
 define SprintBtn    = PS4_R2;
 define PaceCtrol    = PS4_L2;
-define FinesseShot  = PS4_R1;
-define PlayerRun    = PS4_L1;
-define ShotBtn      = PS4_CROSS;
-define PassBtn      = PS4_SQUARE;
-define ThroughBall  = PS4_TRIANGLE;
-define CrossBtn     = PS4_CIRCLE;
-define MOVE_X       = PS4_LX;
-define MOVE_Y       = PS4_LY;
-define SKILL_X      = PS4_RX;
-define SKILL_Y      = PS4_RY;
 
 //------------------------------------------------------------------------------
 // CONSTANTS
 //------------------------------------------------------------------------------
-define MAX_MODS         = 7;        // 0..7 = 8 ميزات
-define MENU_TIMEOUT     = 8000;     // إغلاق القائمة بعد 8 ثواني خمول
-define SCREEN_SAVER_MS  = 5000;     // إيقاف الشاشة بعد 5 ثواني
+define MENU_TIMEOUT     = 8000;
+define SCREEN_SAVER_MS  = 5000;
 
 // LED Colors
 define LED_OFF    = 0;
@@ -59,136 +43,58 @@ define LED_YELLOW = 6;
 define LED_WHITE  = 7;
 
 //------------------------------------------------------------------------------
-// MOD STATE (toggles)
+// MOD STATE
 //------------------------------------------------------------------------------
-int script_on          = TRUE;
-
-int mod_sprint         = 0;   // 0=OFF, 1=ON
-int mod_timed_finish   = 0;
-int mod_shot_power     = 0;   // 0=OFF, 1=UP, 2=RIGHT, 3=DOWN, 4=LEFT
-int mod_penalty        = 0;
-int mod_freekick       = 0;
-int mod_elastico       = 0;
-int mod_rainbow        = 0;
-int mod_roulette       = 0;
-
-//------------------------------------------------------------------------------
-// ADJUSTABLE VALUES
-//------------------------------------------------------------------------------
-int sprint_power       = 50;    // 30..100
-int tf_power           = 220;   // 100..400
-int tf_pause           = 150;   // 50..400
-int shot_power_up      = 220;   // 100..600
-int shot_power_right   = 270;
-int shot_power_down    = 300;
-int shot_power_left    = 350;
-int penalty_power      = 60;    // 40..200
-int skill_speed        = 50;    // 30..100
-
-int active_shot_power  = 220;
+int script_on      = TRUE;
+int mod_sprint     = 1;       // 1=ON افتراضياً
+int sprint_power   = 50;      // 30..100
 
 //------------------------------------------------------------------------------
 // MENU STATE
 //------------------------------------------------------------------------------
-int menu_open          = FALSE;
-int edit_open          = FALSE;
-int splash_done        = FALSE;
-int splash_timer       = 0;
-int menu_idx           = 0;     // 0..MAX_MODS
-int edit_val_idx       = 0;
-int menu_timer         = 0;
-int screen_saver       = FALSE;
-int saver_timer        = 0;
-int need_redraw        = TRUE;
-
-// Penalty / Free Kick runtime
-int onoff_penalty      = FALSE;
-int onoff_fk           = FALSE;
-
-// Free Kick variables
-define FK_TOP_SPIN     = 1;
-define FK_SIDE_SPIN    = 2;
-define FK_KNUCKLEBALL  = 3;
-int fk_mode            = 1;
-int fk_lx              = 0;
-int fk_ly              = 0;
-int fk_shot_power      = 500;
+int menu_open      = FALSE;
+int edit_open      = FALSE;
+int splash_done    = FALSE;
+int splash_timer   = 0;
+int menu_timer     = 0;
+int screen_saver   = FALSE;
+int saver_timer    = 0;
+int need_redraw    = TRUE;
 
 //------------------------------------------------------------------------------
-// MOD NAMES (للقائمة)
+// STRINGS
 //------------------------------------------------------------------------------
-const string MOD_NAMES[] = {
-    "Sprint Control",   // 0
-    "Timed Finish",     // 1
-    "Shot Power",       // 2
-    "Penalty Mod",      // 3
-    "Free Kick Mod",    // 4
-    "Elastico",         // 5
-    "Rainbow Flick",    // 6
-    "Roulette"          // 7
-};
-
-// نصوص حالات Shot Power
-const string SHOT_POWER_STR[] = {
-    "Disabled",  // 0
-    "Up Power",  // 1
-    "Right Pow", // 2
-    "Down Pow",  // 3
-    "Left Pow"   // 4
-};
-
-const string STR_ENABLED   = "Enabled";
-const string STR_DISABLED  = "Disabled";
-const string STR_TITLE     = "FC 26 SCRIPT";
-const string STR_AUTHOR    = "by Hamad";
-const string STR_HINT      = "A/CROSS to Edit";
-const string STR_SAVED     = "SAVED";
-const string STR_SCRIPT_ON = "SCRIPT ON";
-const string STR_SCRIPT_OFF= "SCRIPT OFF";
-const string STR_MOD_LBL   = "MOD:";
-const string STR_VAL_LBL   = "VAL:";
+const string STR_TITLE      = "FC 26 SCRIPT";
+const string STR_AUTHOR     = "by Hamad";
+const string STR_SAVED      = "SAVED";
+const string STR_SCRIPT_ON  = "SCRIPT ON";
+const string STR_SCRIPT_OFF = "SCRIPT OFF";
+const string STR_HINT       = "A/CROSS to Edit";
+const string STR_ENABLED    = "Enabled";
+const string STR_DISABLED   = "Disabled";
+const string STR_MOD_NAME   = "Sprint Control";
+const string STR_PWR_LBL    = "Power:";
 
 //------------------------------------------------------------------------------
-// INIT BLOCK - تحميل الإعدادات من PVAR
+// INIT
 //------------------------------------------------------------------------------
 init {
-    mod_sprint        = get_pvar(SPVAR_1,  0, 1,   1);
-    mod_timed_finish  = get_pvar(SPVAR_2,  0, 1,   0);
-    mod_shot_power    = get_pvar(SPVAR_3,  0, 4,   0);
-    mod_penalty       = get_pvar(SPVAR_4,  0, 1,   0);
-    mod_freekick      = get_pvar(SPVAR_5,  0, 1,   0);
-    mod_elastico      = get_pvar(SPVAR_6,  0, 1,   0);
-    mod_rainbow       = get_pvar(SPVAR_7,  0, 1,   0);
-    mod_roulette      = get_pvar(SPVAR_8,  0, 1,   0);
-
-    sprint_power      = get_pvar(SPVAR_9,  30, 100,  50);
-    tf_power          = get_pvar(SPVAR_10, 100, 400, 220);
-    tf_pause          = get_pvar(SPVAR_11, 50, 400, 150);
-    shot_power_up     = get_pvar(SPVAR_12, 100, 600, 220);
-    shot_power_right  = get_pvar(SPVAR_13, 100, 600, 270);
-    shot_power_down   = get_pvar(SPVAR_14, 100, 600, 300);
-    shot_power_left   = get_pvar(SPVAR_15, 100, 600, 350);
-    penalty_power     = get_pvar(SPVAR_16, 40, 200, 60);
-    skill_speed       = get_pvar(SPVAR_17, 30, 100, 50);
-
-    apply_shot_power();
+    mod_sprint   = get_pvar(SPVAR_1, 0, 1,    1);
+    sprint_power = get_pvar(SPVAR_2, 30, 100, 50);
 }
 
 //==============================================================================
-//  MAIN BLOCK
+//  MAIN
 //==============================================================================
 main {
-    //--------------------------------------------------------------------------
-    // SPLASH SCREEN عند التشغيل
-    //--------------------------------------------------------------------------
     if(!splash_done) {
         if(splash_timer == 0) {
             cls_oled(0);
             draw_frame();
             print(center_x(12, OLED_FONT_MEDIUM_WIDTH), 10,
-                   OLED_FONT_MEDIUM, OLED_WHITE, STR_TITLE[0]);
+                  OLED_FONT_MEDIUM, OLED_WHITE, STR_TITLE[0]);
             print(center_x(8, OLED_FONT_SMALL_WIDTH), 40,
-                   OLED_FONT_SMALL, OLED_WHITE, STR_AUTHOR[0]);
+                  OLED_FONT_SMALL, OLED_WHITE, STR_AUTHOR[0]);
             colourled(LED_BLUE);
         }
         splash_timer = splash_timer + get_rtime();
@@ -198,20 +104,18 @@ main {
             colourled(LED_GREEN);
         }
     } else {
-        //----------------------------------------------------------------------
-        // KILL SWITCH للسكريبت كاملاً (L2 + PS)
-        //----------------------------------------------------------------------
+        // KILL SWITCH (L2 + PS)
         if(get_val(PaceCtrol) && event_press(PS4_PS)) {
             script_on = !script_on;
             cls_oled(0);
             if(script_on) {
                 colourled(LED_GREEN);
                 print(center_x(9, OLED_FONT_MEDIUM_WIDTH), 25,
-                       OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_ON[0]);
+                      OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_ON[0]);
             } else {
                 colourled(LED_RED);
                 print(center_x(10, OLED_FONT_MEDIUM_WIDTH), 25,
-                       OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_OFF[0]);
+                      OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_OFF[0]);
             }
             set_val(PS4_PS, 0);
             saver_timer = 0;
@@ -219,9 +123,7 @@ main {
         }
 
         if(script_on) {
-            //------------------------------------------------------------------
             // فتح/إغلاق القائمة (L2 + OPTIONS)
-            //------------------------------------------------------------------
             if(get_val(PaceCtrol) && event_press(PS4_OPTIONS)) {
                 menu_open = !menu_open;
                 edit_open = FALSE;
@@ -231,16 +133,13 @@ main {
                     save_settings();
                     cls_oled(0);
                     print(center_x(5, OLED_FONT_LARGE_WIDTH), 18,
-                           OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
+                          OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
                     saver_timer = 0;
                     screen_saver = FALSE;
                 }
                 set_val(PS4_OPTIONS, 0);
             }
 
-            //------------------------------------------------------------------
-            // MENU SYSTEM (يأكل كل المدخلات)
-            //------------------------------------------------------------------
             if(menu_open) {
                 block_all_inputs();
                 handle_menu_input();
@@ -263,10 +162,9 @@ main {
 }
 
 //==============================================================================
-//  FEATURES (يستدعى من main عندما السكريبت ON والقائمة مغلقة)
+//  FEATURES
 //==============================================================================
 function run_features() {
-    //--- SCREEN SAVER
     if(!screen_saver) {
         saver_timer = saver_timer + get_rtime();
         if(saver_timer >= SCREEN_SAVER_MS) {
@@ -275,89 +173,17 @@ function run_features() {
         }
     }
 
-    //--- [1] Sprint Control: R2 + L2 = نسبة محددة
+    // Sprint Control: R2 + L2 = نسبة محددة
     if(mod_sprint) {
         if(get_val(SprintBtn) > 0 && get_val(PaceCtrol) > 0) {
             set_val(SprintBtn, sprint_power);
             set_val(PaceCtrol, 0);
         }
     }
-
-    //--- [3] Shot Power Restriction (L1 + Dpad للتغيير السريع)
-    if(mod_shot_power) {
-        if(get_val(PlayerRun)) {
-            if(event_press(PS4_UP))    { mod_shot_power = 1; apply_shot_power(); colourled(LED_GREEN); }
-            if(event_press(PS4_RIGHT)) { mod_shot_power = 2; apply_shot_power(); colourled(LED_BLUE);  }
-            if(event_press(PS4_DOWN))  { mod_shot_power = 3; apply_shot_power(); colourled(LED_PINK);  }
-            if(event_press(PS4_LEFT))  { mod_shot_power = 4; apply_shot_power(); colourled(LED_RED);   }
-        }
-        if(get_val(ShotBtn) && !get_val(FinesseShot)) {
-            if(get_ptime(ShotBtn) >= active_shot_power) {
-                set_val(ShotBtn, 0);
-            }
-        }
-    }
-
-    //--- [2] Timed Finish: تحرير + ضغطة ثانية بعد فترة
-    if(mod_timed_finish) {
-        if(get_val(ShotBtn) && get_ptime(ShotBtn) > tf_power) {
-            set_val(ShotBtn, 0);
-            combo_run(TimedFinishCombo);
-        }
-    }
-
-    //--- [4] Penalty Mod: L1 + OPTIONS لتفعيله
-    if(mod_penalty) {
-        if(get_val(PlayerRun) && event_press(PS4_OPTIONS)) {
-            onoff_penalty = !onoff_penalty;
-            blink_notify(onoff_penalty);
-            set_val(PS4_OPTIONS, 0);
-        }
-        if(onoff_penalty) {
-            colourled(LED_PINK);
-            if(event_press(ShotBtn)) {
-                combo_run(PenaltyKick);
-            }
-        }
-    }
-
-    //--- [5] Free Kick Mod: L1 + SHARE لتفعيله
-    if(mod_freekick) {
-        if(get_val(PlayerRun) && event_press(PS4_SHARE)) {
-            onoff_fk = !onoff_fk;
-            blink_notify(onoff_fk);
-            set_val(PS4_SHARE, 0);
-        }
-        if(onoff_fk) {
-            colourled(LED_YELLOW);
-            handle_freekick();
-        }
-    }
-
-    //--- [6] Elastico (RS نصف دائرة سريعة)
-    if(mod_elastico) {
-        if(event_press(PS4_R3) && get_val(PlayerRun)) {
-            combo_run(ElasticoCombo);
-        }
-    }
-
-    //--- [7] Rainbow (PS4_TOUCH ضغطة)
-    if(mod_rainbow) {
-        if(event_press(PS4_TOUCH) && !get_val(PlayerRun)) {
-            combo_run(RainbowCombo);
-        }
-    }
-
-    //--- [8] Roulette (R3 بدون أي زر)
-    if(mod_roulette) {
-        if(event_press(PS4_L3) && !get_val(PlayerRun) && !get_val(SprintBtn)) {
-            combo_run(RouletteCombo);
-        }
-    }
 }
 
 //==============================================================================
-//  MENU FUNCTIONS
+//  MENU
 //==============================================================================
 function handle_menu_input() {
     // خروج وحفظ
@@ -370,12 +196,11 @@ function handle_menu_input() {
             save_settings();
             cls_oled(0);
             print(center_x(5, OLED_FONT_LARGE_WIDTH), 18,
-                   OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
+                  OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
             saver_timer = 0;
             screen_saver = FALSE;
         }
         menu_timer = MENU_TIMEOUT;
-        return;
     }
 
     // دخول وضع التعديل
@@ -383,100 +208,42 @@ function handle_menu_input() {
         edit_open = !edit_open;
         need_redraw = TRUE;
         menu_timer = MENU_TIMEOUT;
-        return;
     }
 
     if(!edit_open) {
-        // تنقل بين الميزات
-        if(event_press(PS4_DOWN)) {
-            menu_idx = menu_idx + 1;
-            if(menu_idx > MAX_MODS) menu_idx = 0;
-            need_redraw = TRUE;
-            menu_timer = MENU_TIMEOUT;
-        }
-        if(event_press(PS4_UP)) {
-            menu_idx = menu_idx - 1;
-            if(menu_idx < 0) menu_idx = MAX_MODS;
-            need_redraw = TRUE;
-            menu_timer = MENU_TIMEOUT;
-        }
-        // تشغيل/إطفاء سريع
+        // تشغيل/إطفاء
         if(event_press(PS4_RIGHT)) {
-            toggle_mod(menu_idx, 1);
+            mod_sprint = 1;
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_LEFT)) {
-            toggle_mod(menu_idx, -1);
+            mod_sprint = 0;
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
     } else {
-        // وضع التعديل: ←/→ يغير القيمة
+        // وضع التعديل: تغيير قيمة sprint_power
         if(event_press(PS4_RIGHT)) {
-            adjust_value(menu_idx, 10);
-            apply_shot_power();
+            sprint_power = clamp_val(sprint_power + 10, 30, 100);
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_LEFT)) {
-            adjust_value(menu_idx, -10);
-            apply_shot_power();
+            sprint_power = clamp_val(sprint_power - 10, 30, 100);
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_UP)) {
-            adjust_value(menu_idx, 1);
-            apply_shot_power();
+            sprint_power = clamp_val(sprint_power + 1, 30, 100);
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_DOWN)) {
-            adjust_value(menu_idx, -1);
-            apply_shot_power();
+            sprint_power = clamp_val(sprint_power - 1, 30, 100);
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
-    }
-}
-
-function toggle_mod(idx, dir) {
-    if(idx == 0) {
-        if(dir > 0) mod_sprint = 1; else mod_sprint = 0;
-    } else if(idx == 1) {
-        if(dir > 0) mod_timed_finish = 1; else mod_timed_finish = 0;
-    } else if(idx == 2) {
-        mod_shot_power = mod_shot_power + dir;
-        if(mod_shot_power < 0) mod_shot_power = 4;
-        if(mod_shot_power > 4) mod_shot_power = 0;
-        apply_shot_power();
-    } else if(idx == 3) {
-        if(dir > 0) mod_penalty = 1; else mod_penalty = 0;
-    } else if(idx == 4) {
-        if(dir > 0) mod_freekick = 1; else mod_freekick = 0;
-    } else if(idx == 5) {
-        if(dir > 0) mod_elastico = 1; else mod_elastico = 0;
-    } else if(idx == 6) {
-        if(dir > 0) mod_rainbow = 1; else mod_rainbow = 0;
-    } else if(idx == 7) {
-        if(dir > 0) mod_roulette = 1; else mod_roulette = 0;
-    }
-}
-
-function adjust_value(idx, delta) {
-    if(idx == 0) {
-        sprint_power = clamp_val(sprint_power + delta, 30, 100);
-    } else if(idx == 1) {
-        tf_power = clamp_val(tf_power + delta, 100, 400);
-    } else if(idx == 2) {
-        if(mod_shot_power == 1) shot_power_up    = clamp_val(shot_power_up    + delta, 100, 600);
-        if(mod_shot_power == 2) shot_power_right = clamp_val(shot_power_right + delta, 100, 600);
-        if(mod_shot_power == 3) shot_power_down  = clamp_val(shot_power_down  + delta, 100, 600);
-        if(mod_shot_power == 4) shot_power_left  = clamp_val(shot_power_left  + delta, 100, 600);
-    } else if(idx == 3) {
-        penalty_power = clamp_val(penalty_power + delta, 40, 200);
-    } else if(idx == 5 || idx == 6 || idx == 7) {
-        skill_speed = clamp_val(skill_speed + delta, 30, 100);
     }
 }
 
@@ -486,42 +253,13 @@ function clamp_val(v, mn, mx) {
     return v;
 }
 
-function get_mod_status(idx) {
-    if(idx == 0) return mod_sprint;
-    if(idx == 1) return mod_timed_finish;
-    if(idx == 2) return mod_shot_power;
-    if(idx == 3) return mod_penalty;
-    if(idx == 4) return mod_freekick;
-    if(idx == 5) return mod_elastico;
-    if(idx == 6) return mod_rainbow;
-    if(idx == 7) return mod_roulette;
-    return 0;
-}
-
-function get_mod_value(idx) {
-    if(idx == 0) return sprint_power;
-    if(idx == 1) return tf_power;
-    if(idx == 2) {
-        if(mod_shot_power == 1) return shot_power_up;
-        if(mod_shot_power == 2) return shot_power_right;
-        if(mod_shot_power == 3) return shot_power_down;
-        if(mod_shot_power == 4) return shot_power_left;
-        return 0;
-    }
-    if(idx == 3) return penalty_power;
-    if(idx == 5) return skill_speed;
-    if(idx == 6) return skill_speed;
-    if(idx == 7) return skill_speed;
-    return 0;
-}
-
 //==============================================================================
-//  OLED DRAW FUNCTIONS
+//  OLED
 //==============================================================================
 function draw_frame() {
     rect_oled(0, 0, OLED_WIDTH, 64, FALSE, 1);
-    line_oled(1, 15, 127, 15, 1, 1);     // فاصل تحت العنوان
-    line_oled(1, 48, 127, 48, 1, 1);     // فاصل فوق الـ Hint
+    line_oled(1, 15, 127, 15, 1, 1);
+    line_oled(1, 48, 127, 48, 1, 1);
 }
 
 function draw_menu() {
@@ -529,56 +267,32 @@ function draw_menu() {
     draw_frame();
 
     // السطر 1: اسم الميزة
-    print(center_x(get_str_len_mod(menu_idx), OLED_FONT_SMALL_WIDTH), 4,
-           OLED_FONT_SMALL, OLED_WHITE, MOD_NAMES[menu_idx]);
+    print(center_x(14, OLED_FONT_SMALL_WIDTH), 4,
+          OLED_FONT_SMALL, OLED_WHITE, STR_MOD_NAME[0]);
 
-    // السطر 2: الحالة (Enabled/Disabled أو قيمة)
-    draw_status_line();
+    // السطر 2: الحالة أو القيمة
+    if(edit_open) {
+        print_num_center(sprint_power, 22);
+    } else {
+        if(mod_sprint > 0) {
+            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
+                  OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+        } else {
+            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
+                  OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+        }
+    }
 
-    // السطر 3: MOD:X    [VAL]
-    draw_info_line();
+    // السطر 3: Power: XX
+    print(30, 40, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
+    print_num_at(sprint_power, 78, 40, OLED_FONT_SMALL);
 
     // السطر 4: تعليمات
     print(center_x(15, OLED_FONT_SMALL_WIDTH), 53,
-           OLED_FONT_SMALL, OLED_WHITE, STR_HINT[0]);
+          OLED_FONT_SMALL, OLED_WHITE, STR_HINT[0]);
 }
 
-function draw_status_line() {
-    draw_st = get_mod_status(menu_idx);
-
-    if(edit_open) {
-        // عرض القيمة الحالية بخط كبير
-        print_num_center(get_mod_value(menu_idx), 22);
-    } else {
-        if(menu_idx == 2) {
-            // Shot Power: عرض الحالة الحالية
-            print(center_x(9, OLED_FONT_MEDIUM_WIDTH), 22,
-                   OLED_FONT_MEDIUM, OLED_WHITE, SHOT_POWER_STR[draw_st]);
-        } else {
-            if(draw_st > 0) {
-                print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
-                       OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
-            } else {
-                print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
-                       OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
-            }
-        }
-    }
-}
-
-function draw_info_line() {
-    // MOD:X  على اليسار
-    print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_MOD_LBL[0]);
-    print_num_at(menu_idx + 1, 32, 40, OLED_FONT_SMALL);
-
-    // VAL على اليمين
-    print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_VAL_LBL[0]);
-    print_num_at(get_mod_value(menu_idx), 100, 40, OLED_FONT_SMALL);
-}
-
-// عرض رقم في مكان محدد
 int pn_buf, pn_i, pn_div;
-int draw_st;
 int draw_digits;
 const int8 ASCII_DIGITS[] = {48,49,50,51,52,53,54,55,56,57};
 
@@ -625,18 +339,6 @@ function center_x(chars, font_width) {
     return (OLED_WIDTH / 2) - ((chars * font_width) / 2);
 }
 
-function get_str_len_mod(idx) {
-    if(idx == 0) return 14;  // "Sprint Control"
-    if(idx == 1) return 12;  // "Timed Finish"
-    if(idx == 2) return 10;  // "Shot Power"
-    if(idx == 3) return 11;  // "Penalty Mod"
-    if(idx == 4) return 13;  // "Free Kick Mod"
-    if(idx == 5) return 8;   // "Elastico"
-    if(idx == 6) return 13;  // "Rainbow Flick"
-    if(idx == 7) return 8;   // "Roulette"
-    return 8;
-}
-
 //==============================================================================
 //  LED
 //==============================================================================
@@ -658,147 +360,10 @@ function colourled(color) {
     }
 }
 
-int blink_color;
-function blink_notify(state) {
-    if(state) blink_color = LED_GREEN;
-    else      blink_color = LED_RED;
-    combo_run(BlinkCombo);
-}
-
-combo BlinkCombo {
-    colourled(blink_color);
-    wait(250);
-    colourled(LED_OFF);
-    wait(150);
-    colourled(blink_color);
-    wait(250);
-    colourled(LED_GREEN);
-}
-
 //==============================================================================
-//  SAVE SETTINGS (PVAR)
+//  SAVE
 //==============================================================================
 function save_settings() {
-    set_pvar(SPVAR_1,  mod_sprint);
-    set_pvar(SPVAR_2,  mod_timed_finish);
-    set_pvar(SPVAR_3,  mod_shot_power);
-    set_pvar(SPVAR_4,  mod_penalty);
-    set_pvar(SPVAR_5,  mod_freekick);
-    set_pvar(SPVAR_6,  mod_elastico);
-    set_pvar(SPVAR_7,  mod_rainbow);
-    set_pvar(SPVAR_8,  mod_roulette);
-    set_pvar(SPVAR_9,  sprint_power);
-    set_pvar(SPVAR_10, tf_power);
-    set_pvar(SPVAR_11, tf_pause);
-    set_pvar(SPVAR_12, shot_power_up);
-    set_pvar(SPVAR_13, shot_power_right);
-    set_pvar(SPVAR_14, shot_power_down);
-    set_pvar(SPVAR_15, shot_power_left);
-    set_pvar(SPVAR_16, penalty_power);
-    set_pvar(SPVAR_17, skill_speed);
-}
-
-function apply_shot_power() {
-    if(mod_shot_power == 1) active_shot_power = shot_power_up;
-    else if(mod_shot_power == 2) active_shot_power = shot_power_right;
-    else if(mod_shot_power == 3) active_shot_power = shot_power_down;
-    else if(mod_shot_power == 4) active_shot_power = shot_power_left;
-    else active_shot_power = 600;
-}
-
-//==============================================================================
-//  FREE KICK HANDLER
-//==============================================================================
-function handle_freekick() {
-    if(get_val(PaceCtrol)) {  // L2 + Dpad = SIDE SPIN
-        if(event_press(PS4_RIGHT)) {
-            fk_lx = 76; fk_ly = -40;
-            fk_mode = FK_SIDE_SPIN; fk_shot_power = 500;
-            combo_run(FreeKickCombo);
-        }
-        if(event_press(PS4_LEFT)) {
-            fk_lx = -76; fk_ly = -40;
-            fk_mode = FK_SIDE_SPIN; fk_shot_power = 500;
-            combo_run(FreeKickCombo);
-        }
-    }
-    if(get_val(SprintBtn)) { // R2 + Dpad = TOP SPIN
-        if(event_press(PS4_RIGHT)) {
-            fk_lx = 28; fk_ly = -88;
-            fk_mode = FK_TOP_SPIN; fk_shot_power = 500;
-            combo_run(FreeKickCombo);
-        }
-        if(event_press(PS4_LEFT)) {
-            fk_lx = -28; fk_ly = -88;
-            fk_mode = FK_TOP_SPIN; fk_shot_power = 500;
-            combo_run(FreeKickCombo);
-        }
-    }
-    if(get_val(FinesseShot)) { // R1 + Dpad = KNUCKLEBALL
-        if(event_press(PS4_RIGHT)) {
-            fk_lx = 63; fk_ly = -35;
-            fk_mode = FK_KNUCKLEBALL; fk_shot_power = 460;
-            combo_run(FreeKickCombo);
-        }
-        if(event_press(PS4_LEFT)) {
-            fk_lx = -63; fk_ly = -35;
-            fk_mode = FK_KNUCKLEBALL; fk_shot_power = 460;
-            combo_run(FreeKickCombo);
-        }
-    }
-}
-
-//==============================================================================
-//  COMBOS
-//==============================================================================
-combo TimedFinishCombo {
-    wait(tf_pause);
-    set_val(ShotBtn, 100);
-    wait(40);
-    set_val(ShotBtn, 0);
-}
-
-combo PenaltyKick {
-    set_val(ShotBtn, 100);
-    wait(penalty_power * 10);
-    set_val(ShotBtn, 0);
-    wait(50);
-}
-
-combo FreeKickCombo {
-    set_val(MOVE_X, fk_lx);
-    set_val(MOVE_Y, fk_ly);
-    wait(600);
-    set_val(MOVE_X, fk_lx);
-    set_val(MOVE_Y, fk_ly);
-    set_val(ShotBtn, 100);
-    wait(fk_shot_power);
-    set_val(ShotBtn, 0);
-    wait(100);
-}
-
-combo ElasticoCombo {
-    set_val(SKILL_X,  100); wait(skill_speed);
-    set_val(SKILL_Y,  100); wait(skill_speed);
-    set_val(SKILL_X, -100); wait(skill_speed);
-    set_val(SKILL_Y, -100); wait(skill_speed);
-    set_val(SKILL_X, 0);
-    set_val(SKILL_Y, 0);
-}
-
-combo RainbowCombo {
-    set_val(SKILL_Y,  100); wait(skill_speed);
-    set_val(SKILL_Y,    0); wait(40);
-    set_val(SKILL_Y, -100); wait(skill_speed * 2);
-    set_val(SKILL_Y,    0);
-}
-
-combo RouletteCombo {
-    set_val(SKILL_X,  100); wait(skill_speed);
-    set_val(SKILL_Y,  100); wait(skill_speed);
-    set_val(SKILL_X, -100); wait(skill_speed);
-    set_val(SKILL_Y, -100); wait(skill_speed);
-    set_val(SKILL_X,  100); wait(skill_speed);
-    set_val(SKILL_X,    0);
-    set_val(SKILL_Y,    0);
+    set_pvar(SPVAR_1, mod_sprint);
+    set_pvar(SPVAR_2, sprint_power);
 }
