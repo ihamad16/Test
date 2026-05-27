@@ -45,7 +45,7 @@ define MENU_TIMEOUT     = 8000;
 define SCREEN_SAVER_MS  = 5000;
 define MAX_MODS         = 3;
 define TGT_DEFAULT      = 8;
-define SH_DISABLED      = 11;
+define SH_DISABLED      = 15;       // 0..10 = أزرار، 11..14 = سحبات، 15 = Off
 define SWIPE_THRESHOLD  = 30;       // الحد الأدنى لاعتبار الحركة سحبة
 
 // LED Colors
@@ -82,7 +82,7 @@ int remap_btn_idx  = 0;
 // Mod 3: Finesse Shot
 int mod_finesse       = 0;
 int finesse_power     = 300;   // 50..1500 ms (مدة الضغط على زر التسديد)
-int finesse_shortcut  = 11;    // 0..10 = زر، 11 = Disabled
+int finesse_shortcut  = 15;    // 0..10 = زر، 11..14 = سحبات، 15 = Disabled
 int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut
 
 // Mod 4: Touchpad Swipes
@@ -97,6 +97,7 @@ int swipe_last_x      = 0;
 int swipe_last_y      = 0;
 int swipe_dx          = 0;
 int swipe_dy          = 0;
+int last_swipe        = 0;    // 0=none, 1=up, 2=down, 3=left, 4=right
 
 // Remap routing temp vars
 int o_l1, o_r1, o_l2, o_r2, o_cross, o_circle, o_square, o_triangle;
@@ -155,6 +156,10 @@ const string BTN_TR   = "Triangle";
 const string BTN_L3   = "L3";
 const string BTN_R3   = "R3";
 const string BTN_TP   = "Touchpad";
+const string BTN_SWUP = "Sw.Up";
+const string BTN_SWDN = "Sw.Dn";
+const string BTN_SWLF = "Sw.Lf";
+const string BTN_SWRG = "Sw.Rg";
 
 //------------------------------------------------------------------------------
 // INIT
@@ -173,7 +178,7 @@ init {
     tgt_triangle     = get_pvar(SPVAR_11, 0, 8,    8);
     mod_finesse      = get_pvar(SPVAR_12, 0, 1,    0);
     finesse_power    = get_pvar(SPVAR_13, 50, 1500, 300);
-    finesse_shortcut = get_pvar(SPVAR_14, 0, 11,   11);
+    finesse_shortcut = get_pvar(SPVAR_14, 0, 15,   15);
     mod_swipe        = get_pvar(SPVAR_15, 0, 1,    0);
 }
 
@@ -274,17 +279,28 @@ function run_features() {
         }
     }
 
+    // كشف السحبات أولاً إذا أي مود يحتاجها (الفينس قد يستخدم سحبة كاختصار)
+    if(mod_swipe || (mod_finesse && finesse_shortcut >= 11 && finesse_shortcut <= 14)) {
+        detect_swipes();
+    }
+
     if(mod_finesse) {
-        // تشغيل الـ Shortcut
+        // الفينس يستهلك السحبة إن كانت اختصاره (يمسح last_swipe داخل check)
         if(check_finesse_shortcut()) combo_run(FinesseCombo);
 
-        // Cap على SQUARE فقط (مع R1) — نترك R1 طبيعي لتفادي الضغطة الوهمية
+        // Cap على SQUARE فقط (مع R1)
         if(get_val(PS4_R1) && get_val(PS4_SQUARE) && get_ptime(PS4_SQUARE) >= finesse_power) {
             set_val(PS4_SQUARE, 0);
         }
     }
 
-    if(mod_swipe) detect_swipes();
+    // mod_swipe يطلق المهارات إن لم تُستهلك السحبة بواسطة الفينس
+    if(mod_swipe) {
+        if(last_swipe == 1)      combo_run(SwipeUpCombo);
+        else if(last_swipe == 2) combo_run(SwipeDownCombo);
+        else if(last_swipe == 3) combo_run(SwipeLeftCombo);
+        else if(last_swipe == 4) combo_run(SwipeRightCombo);
+    }
 }
 
 //==============================================================================
@@ -294,6 +310,7 @@ function detect_swipes() {
     touch_now_x = get_val(PS4_TOUCHX);
     touch_now_y = get_val(PS4_TOUCHY);
     touch_is_active = (touch_now_x != 0) || (touch_now_y != 0);
+    last_swipe = 0;
 
     // بداية اللمس
     if(touch_is_active && !touch_was_active) {
@@ -307,19 +324,17 @@ function detect_swipes() {
         swipe_last_y = touch_now_y;
     }
 
-    // نهاية اللمس: حساب اتجاه السحبة
+    // نهاية اللمس: حساب اتجاه السحبة وتخزينه في last_swipe
     if(!touch_is_active && touch_was_active) {
         swipe_dx = swipe_last_x - swipe_start_x;
         swipe_dy = swipe_last_y - swipe_start_y;
 
         if(abs(swipe_dx) > abs(swipe_dy)) {
-            // أفقي
-            if(swipe_dx > SWIPE_THRESHOLD)       combo_run(SwipeRightCombo);
-            else if(swipe_dx < -SWIPE_THRESHOLD) combo_run(SwipeLeftCombo);
+            if(swipe_dx > SWIPE_THRESHOLD)       last_swipe = 4;  // right
+            else if(swipe_dx < -SWIPE_THRESHOLD) last_swipe = 3;  // left
         } else {
-            // عمودي
-            if(swipe_dy > SWIPE_THRESHOLD)       combo_run(SwipeDownCombo);
-            else if(swipe_dy < -SWIPE_THRESHOLD) combo_run(SwipeUpCombo);
+            if(swipe_dy > SWIPE_THRESHOLD)       last_swipe = 2;  // down
+            else if(swipe_dy < -SWIPE_THRESHOLD) last_swipe = 1;  // up
         }
     }
 
@@ -383,6 +398,11 @@ function check_finesse_shortcut() {
     if(finesse_shortcut == 8  && event_press(PS4_L3))       return 1;
     if(finesse_shortcut == 9  && event_press(PS4_R3))       return 1;
     if(finesse_shortcut == 10 && event_press(PS4_TOUCH))    return 1;
+    // اختصارات السحب: نمسح last_swipe بعد الاستهلاك حتى لا يطلقه mod_swipe أيضاً
+    if(finesse_shortcut == 11 && last_swipe == 1) { last_swipe = 0; return 1; }
+    if(finesse_shortcut == 12 && last_swipe == 2) { last_swipe = 0; return 1; }
+    if(finesse_shortcut == 13 && last_swipe == 3) { last_swipe = 0; return 1; }
+    if(finesse_shortcut == 14 && last_swipe == 4) { last_swipe = 0; return 1; }
     return 0;
 }
 
@@ -746,7 +766,11 @@ function print_shortcut_name(idx, x, y, font) {
     else if(idx == 8)  print(x, y, font, OLED_WHITE, BTN_L3[0]);
     else if(idx == 9)  print(x, y, font, OLED_WHITE, BTN_R3[0]);
     else if(idx == 10) print(x, y, font, OLED_WHITE, BTN_TP[0]);
-    else if(idx == 11) print(x, y, font, OLED_WHITE, STR_OFF[0]);
+    else if(idx == 11) print(x, y, font, OLED_WHITE, BTN_SWUP[0]);
+    else if(idx == 12) print(x, y, font, OLED_WHITE, BTN_SWDN[0]);
+    else if(idx == 13) print(x, y, font, OLED_WHITE, BTN_SWLF[0]);
+    else if(idx == 14) print(x, y, font, OLED_WHITE, BTN_SWRG[0]);
+    else if(idx == 15) print(x, y, font, OLED_WHITE, STR_OFF[0]);
 }
 
 //==============================================================================
