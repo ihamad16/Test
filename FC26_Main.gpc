@@ -262,10 +262,10 @@ function run_features() {
 //==============================================================================
 combo FinesseCombo {
     set_val(PS4_R1, 100);
-    set_val(PS4_CROSS, 100);
+    set_val(PS4_SQUARE, 100);
     wait(finesse_power);
     set_val(PS4_R1, 0);
-    set_val(PS4_CROSS, 0);
+    set_val(PS4_SQUARE, 0);
 }
 
 function check_finesse_shortcut() {
