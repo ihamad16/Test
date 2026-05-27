@@ -478,11 +478,14 @@ combo TrivelaCombo {
 //==============================================================================
 //  SKILLS COMBOS
 //==============================================================================
-// Spin "Smart": تستخدم القيم المحسوبة في spin_step1/2_x/y (تعتمد على اتجاه LS)
+// Spin "Smart" v2: 3 خطوات — أمام (LS direction) → منتصف → يسار/يمين نسبي
 combo SkillSpinSmart {
     set_val(PS4_RX, spin_step1_x);
     set_val(PS4_RY, spin_step1_y);
-    wait(120);
+    wait(100);
+    set_val(PS4_RX, 0);
+    set_val(PS4_RY, 0);
+    wait(40);
     set_val(PS4_RX, spin_step2_x);
     set_val(PS4_RY, spin_step2_y);
     wait(120);
@@ -556,11 +559,11 @@ function transform_to_world(px, py) {
     }
 }
 
-// إطلاق Spin Left: player frame steps = (0, 100) ثم (-100, 0)
+// إطلاق Spin Left: player frame steps = forward (0, -100) ثم left (-100, 0)
 function fire_spin_l() {
     detect_ls_zone();
     if(ls_zone >= 0) {
-        transform_to_world(0, 100);
+        transform_to_world(0, -100);
         spin_step1_x = rot_world_x;
         spin_step1_y = rot_world_y;
         transform_to_world(-100, 0);
@@ -570,11 +573,11 @@ function fire_spin_l() {
     }
 }
 
-// إطلاق Spin Right: player frame steps = (0, 100) ثم (100, 0)
+// إطلاق Spin Right: player frame steps = forward (0, -100) ثم right (100, 0)
 function fire_spin_r() {
     detect_ls_zone();
     if(ls_zone >= 0) {
-        transform_to_world(0, 100);
+        transform_to_world(0, -100);
         spin_step1_x = rot_world_x;
         spin_step1_y = rot_world_y;
         transform_to_world(100, 0);
