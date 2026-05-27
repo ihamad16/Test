@@ -16,7 +16,7 @@
 //  CIRCLE (O)      → خروج + حفظ
 //
 //  الميزة:
-//  Sprint Control → R2 + L2 = جري بنسبة قابلة للضبط (30..100)
+//  Sprint Control → R2 + L2 = جري بنسبة قابلة للضبط (0..100)
 //
 //==============================================================================
 
@@ -47,7 +47,7 @@ define LED_WHITE  = 7;
 //------------------------------------------------------------------------------
 int script_on      = TRUE;
 int mod_sprint     = 1;       // 1=ON افتراضياً
-int sprint_power   = 50;      // 30..100
+int sprint_power   = 50;      // 0..100
 
 //------------------------------------------------------------------------------
 // MENU STATE
@@ -80,7 +80,7 @@ const string STR_PWR_LBL    = "Power:";
 //------------------------------------------------------------------------------
 init {
     mod_sprint   = get_pvar(SPVAR_1, 0, 1,    1);
-    sprint_power = get_pvar(SPVAR_2, 30, 100, 50);
+    sprint_power = get_pvar(SPVAR_2, 0, 100, 50);
 }
 
 //==============================================================================
@@ -225,22 +225,22 @@ function handle_menu_input() {
     } else {
         // وضع التعديل: تغيير قيمة sprint_power
         if(event_press(PS4_RIGHT)) {
-            sprint_power = clamp_val(sprint_power + 10, 30, 100);
+            sprint_power = clamp_val(sprint_power + 10, 0, 100);
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_LEFT)) {
-            sprint_power = clamp_val(sprint_power - 10, 30, 100);
+            sprint_power = clamp_val(sprint_power - 10, 0, 100);
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_UP)) {
-            sprint_power = clamp_val(sprint_power + 1, 30, 100);
+            sprint_power = clamp_val(sprint_power + 1, 0, 100);
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_DOWN)) {
-            sprint_power = clamp_val(sprint_power - 1, 30, 100);
+            sprint_power = clamp_val(sprint_power - 1, 0, 100);
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
