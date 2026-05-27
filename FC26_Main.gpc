@@ -307,8 +307,8 @@ function run_features() {
 //  TOUCHPAD SWIPES
 //==============================================================================
 function detect_swipes() {
-    touch_now_x = get_val(PS4_TOUCHX);
-    touch_now_y = get_val(PS4_TOUCHY);
+    touch_now_x = get_val(PS4_TOUCHPX1);
+    touch_now_y = get_val(PS4_TOUCHPY1);
     touch_is_active = (touch_now_x != 0) || (touch_now_y != 0);
     last_swipe = 0;
 
