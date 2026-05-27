@@ -21,10 +21,10 @@
 //  Mod 3 (Finesse): ↑/↓ = تبديل الخيار  |  ←/→ = تغيير القيمة
 //
 //  المودات:
-//  [1] Sprint Control → R2+L2 = جري بنسبة (10..100)
-//  [2] Button Remap   → كل زر يتحول لأي زر آخر
-//  [3] Finesse Shot   → R1+SQUARE — Power + Shortcut
-//  [4] Trivela Shot   → L2+SQUARE — Power + Shortcut
+//  [1] Button Remap   → كل زر يتحول لأي زر آخر
+//  [2] Finesse Shot   → R1+SQUARE — Power + Shortcut
+//  [3] Trivela Shot   → L2+SQUARE — Power + Shortcut
+//  [4] Sprint Control → R2+L2 = جري بنسبة (10..100)
 //  [5] Skills         → McGeady L/R (Smart: تدوير حسب LS)
 //
 //==============================================================================
@@ -793,24 +793,6 @@ function handle_menu_input() {
         }
     } else {
         if(menu_idx == 0) {
-            // Sprint
-            if(event_press(PS4_RIGHT)) {
-                sprint_power = clamp_val(sprint_power + 10, 10, 100);
-                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
-            }
-            if(event_press(PS4_LEFT)) {
-                sprint_power = clamp_val(sprint_power - 10, 10, 100);
-                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
-            }
-            if(event_press(PS4_UP)) {
-                sprint_power = clamp_val(sprint_power + 1, 10, 100);
-                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
-            }
-            if(event_press(PS4_DOWN)) {
-                sprint_power = clamp_val(sprint_power - 1, 10, 100);
-                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
-            }
-        } else if(menu_idx == 1) {
             // Remap
             if(event_press(PS4_DOWN)) {
                 remap_btn_idx = remap_btn_idx + 1;
@@ -830,7 +812,7 @@ function handle_menu_input() {
                 cycle_target(remap_btn_idx, -1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
-        } else if(menu_idx == 2) {
+        } else if(menu_idx == 1) {
             // Finesse: ↑/↓ يبدل بين 3 خيارات، ←/→ يعدل القيمة
             if(event_press(PS4_DOWN)) {
                 finesse_opt_idx = finesse_opt_idx + 1;
@@ -854,7 +836,7 @@ function handle_menu_input() {
                 else                          cycle_finesse_dbl(-1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
-        } else if(menu_idx == 3) {
+        } else if(menu_idx == 2) {
             // Trivela: نفس الفينس
             if(event_press(PS4_DOWN)) {
                 trivela_opt_idx = 1 - trivela_opt_idx;
@@ -878,6 +860,24 @@ function handle_menu_input() {
                 } else {
                     cycle_trivela_shortcut(-1);
                 }
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+        } else if(menu_idx == 3) {
+            // Sprint
+            if(event_press(PS4_RIGHT)) {
+                sprint_power = clamp_val(sprint_power + 10, 10, 100);
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_LEFT)) {
+                sprint_power = clamp_val(sprint_power - 10, 10, 100);
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_UP)) {
+                sprint_power = clamp_val(sprint_power + 1, 10, 100);
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_DOWN)) {
+                sprint_power = clamp_val(sprint_power - 1, 10, 100);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 4) {
@@ -905,10 +905,10 @@ function handle_menu_input() {
 }
 
 function toggle_mod(val) {
-    if(menu_idx == 0) mod_sprint = val;
-    else if(menu_idx == 1) mod_remap = val;
-    else if(menu_idx == 2) mod_finesse = val;
-    else if(menu_idx == 3) mod_trivela = val;
+    if(menu_idx == 0) mod_remap = val;
+    else if(menu_idx == 1) mod_finesse = val;
+    else if(menu_idx == 2) mod_trivela = val;
+    else if(menu_idx == 3) mod_sprint = val;
     else if(menu_idx == 4) mod_skills = val;
 }
 
@@ -930,10 +930,10 @@ function draw_menu() {
     cls_oled(0);
     draw_frame();
 
-    if(menu_idx == 0) draw_sprint_menu();
-    else if(menu_idx == 1) draw_remap_menu();
-    else if(menu_idx == 2) draw_finesse_menu();
-    else if(menu_idx == 3) draw_trivela_menu();
+    if(menu_idx == 0) draw_remap_menu();
+    else if(menu_idx == 1) draw_finesse_menu();
+    else if(menu_idx == 2) draw_trivela_menu();
+    else if(menu_idx == 3) draw_sprint_menu();
     else if(menu_idx == 4) draw_skills_menu();
 }
 
