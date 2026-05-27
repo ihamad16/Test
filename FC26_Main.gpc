@@ -471,7 +471,7 @@ function handle_menu_input() {
             }
             if(event_press(PS4_RIGHT)) {
                 if(finesse_opt_idx == 0) {
-                    finesse_power = clamp_val(finesse_power + 50, 50, 1500);
+                    finesse_power = clamp_val(finesse_power + 5, 50, 1500);
                 } else {
                     cycle_shortcut(1);
                 }
@@ -479,7 +479,7 @@ function handle_menu_input() {
             }
             if(event_press(PS4_LEFT)) {
                 if(finesse_opt_idx == 0) {
-                    finesse_power = clamp_val(finesse_power - 50, 50, 1500);
+                    finesse_power = clamp_val(finesse_power - 5, 50, 1500);
                 } else {
                     cycle_shortcut(-1);
                 }
