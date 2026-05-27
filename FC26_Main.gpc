@@ -214,9 +214,9 @@ const string BTN_SWRG = "Sw.Rg";
 // INIT
 //------------------------------------------------------------------------------
 init {
-    // علم النسخة: SPVAR_99 لازم يساوي 42 إذا تم تهيئة الإعدادات الافتراضية مسبقاً.
+    // علم النسخة: SPVAR_50 لازم يساوي 42 إذا تم تهيئة الإعدادات الافتراضية مسبقاً.
     // لو لا، نكتب الـ shortcut defaults يدوياً (لأن Cronus يرجع 0 للـ PVAR غير المُهيّأ).
-    if(get_pvar(SPVAR_99, 0, 99, 0) != 42) {
+    if(get_pvar(SPVAR_50, 0, 99, 0) != 42) {
         set_pvar(SPVAR_40, 15);  // finesse_shortcut = Off
         set_pvar(SPVAR_41, 15);  // trivela_shortcut = Off
         set_pvar(SPVAR_42, 11);  // finesse_dbl_btn = Off
@@ -228,7 +228,7 @@ init {
         set_pvar(SPVAR_35, 15);  // sk_berba_r = Off
         set_pvar(SPVAR_36, 15);  // sk_rainbow = Off
         set_pvar(SPVAR_37, 15);  // sk_roulette = Off
-        set_pvar(SPVAR_99, 42);  // علامة تم تهيئة الافتراضيات
+        set_pvar(SPVAR_50, 42);  // علامة تم تهيئة الافتراضيات
     }
 
     mod_sprint       = get_pvar(SPVAR_1,  0, 1,    1);
