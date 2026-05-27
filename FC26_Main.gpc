@@ -185,9 +185,9 @@ main {
         if(splash_timer == 0) {
             cls_oled(0);
             draw_frame();
-            printf(center_x(12, OLED_FONT_MEDIUM_WIDTH), 10,
+            print(center_x(12, OLED_FONT_MEDIUM_WIDTH), 10,
                    OLED_FONT_MEDIUM, OLED_WHITE, STR_TITLE[0]);
-            printf(center_x(8, OLED_FONT_SMALL_WIDTH), 40,
+            print(center_x(8, OLED_FONT_SMALL_WIDTH), 40,
                    OLED_FONT_SMALL, OLED_WHITE, STR_AUTHOR[0]);
             colourled(LED_BLUE);
         }
@@ -197,73 +197,78 @@ main {
             cls_oled(0);
             colourled(LED_GREEN);
         }
-        return;
-    }
-
-    //--------------------------------------------------------------------------
-    // KILL SWITCH للسكريبت كاملاً (L2 + PS)
-    //--------------------------------------------------------------------------
-    if(get_val(PaceCtrol) && event_press(PS4_PS)) {
-        script_on = !script_on;
-        cls_oled(0);
-        if(script_on) {
-            colourled(LED_GREEN);
-            printf(center_x(9, OLED_FONT_MEDIUM_WIDTH), 25,
-                   OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_ON[0]);
-        } else {
-            colourled(LED_RED);
-            printf(center_x(10, OLED_FONT_MEDIUM_WIDTH), 25,
-                   OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_OFF[0]);
-        }
-        set_val(PS4_PS, 0);
-        saver_timer = 0;
-        screen_saver = FALSE;
-    }
-
-    if(!script_on) return;
-
-    //--------------------------------------------------------------------------
-    // فتح/إغلاق القائمة (L2 + OPTIONS)
-    //--------------------------------------------------------------------------
-    if(get_val(PaceCtrol) && event_press(PS4_OPTIONS)) {
-        menu_open = !menu_open;
-        edit_open = FALSE;
-        menu_timer = MENU_TIMEOUT;
-        need_redraw = TRUE;
-        if(!menu_open) {
-            save_settings();
+    } else {
+        //----------------------------------------------------------------------
+        // KILL SWITCH للسكريبت كاملاً (L2 + PS)
+        //----------------------------------------------------------------------
+        if(get_val(PaceCtrol) && event_press(PS4_PS)) {
+            script_on = !script_on;
             cls_oled(0);
-            printf(center_x(5, OLED_FONT_LARGE_WIDTH), 18,
-                   OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
+            if(script_on) {
+                colourled(LED_GREEN);
+                print(center_x(9, OLED_FONT_MEDIUM_WIDTH), 25,
+                       OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_ON[0]);
+            } else {
+                colourled(LED_RED);
+                print(center_x(10, OLED_FONT_MEDIUM_WIDTH), 25,
+                       OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_OFF[0]);
+            }
+            set_val(PS4_PS, 0);
             saver_timer = 0;
             screen_saver = FALSE;
         }
-        set_val(PS4_OPTIONS, 0);
-    }
 
-    //--------------------------------------------------------------------------
-    // MENU SYSTEM
-    //--------------------------------------------------------------------------
-    if(menu_open) {
-        block_all_inputs();
-        handle_menu_input();
-        if(need_redraw) {
-            draw_menu();
-            need_redraw = FALSE;
-        }
-        menu_timer = menu_timer - get_rtime();
-        if(menu_timer <= 0) {
-            menu_open = FALSE;
-            edit_open = FALSE;
-            save_settings();
-            cls_oled(0);
-        }
-        return;
-    }
+        if(script_on) {
+            //------------------------------------------------------------------
+            // فتح/إغلاق القائمة (L2 + OPTIONS)
+            //------------------------------------------------------------------
+            if(get_val(PaceCtrol) && event_press(PS4_OPTIONS)) {
+                menu_open = !menu_open;
+                edit_open = FALSE;
+                menu_timer = MENU_TIMEOUT;
+                need_redraw = TRUE;
+                if(!menu_open) {
+                    save_settings();
+                    cls_oled(0);
+                    print(center_x(5, OLED_FONT_LARGE_WIDTH), 18,
+                           OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
+                    saver_timer = 0;
+                    screen_saver = FALSE;
+                }
+                set_val(PS4_OPTIONS, 0);
+            }
 
-    //--------------------------------------------------------------------------
-    // SCREEN SAVER
-    //--------------------------------------------------------------------------
+            //------------------------------------------------------------------
+            // MENU SYSTEM (يأكل كل المدخلات)
+            //------------------------------------------------------------------
+            if(menu_open) {
+                block_all_inputs();
+                handle_menu_input();
+                if(need_redraw) {
+                    draw_menu();
+                    need_redraw = FALSE;
+                }
+                menu_timer = menu_timer - get_rtime();
+                if(menu_timer <= 0) {
+                    menu_open = FALSE;
+                    edit_open = FALSE;
+                    save_settings();
+                    cls_oled(0);
+                }
+            } else {
+                run_features();
+            }
+        }
+    }
+}
+
+}
+
+//==============================================================================
+//  FEATURES (يستدعى من main عندما السكريبت ON والقائمة مغلقة)
+//==============================================================================
+function run_features() {
+    //--- SCREEN SAVER
     if(!screen_saver) {
         saver_timer = saver_timer + get_rtime();
         if(saver_timer >= SCREEN_SAVER_MS) {
@@ -271,10 +276,6 @@ main {
             screen_saver = TRUE;
         }
     }
-
-    //==========================================================================
-    // FEATURES
-    //==========================================================================
 
     //--- [1] Sprint Control: R2 + L2 = نسبة محددة
     if(mod_sprint) {
@@ -370,7 +371,7 @@ function handle_menu_input() {
             menu_open = FALSE;
             save_settings();
             cls_oled(0);
-            printf(center_x(5, OLED_FONT_LARGE_WIDTH), 18,
+            print(center_x(5, OLED_FONT_LARGE_WIDTH), 18,
                    OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
             saver_timer = 0;
             screen_saver = FALSE;
@@ -530,7 +531,7 @@ function draw_menu() {
     draw_frame();
 
     // السطر 1: اسم الميزة
-    printf(center_x(get_str_len_mod(menu_idx), OLED_FONT_SMALL_WIDTH), 4,
+    print(center_x(get_str_len_mod(menu_idx), OLED_FONT_SMALL_WIDTH), 4,
            OLED_FONT_SMALL, OLED_WHITE, MOD_NAMES[menu_idx]);
 
     // السطر 2: الحالة (Enabled/Disabled أو قيمة)
@@ -540,7 +541,7 @@ function draw_menu() {
     draw_info_line();
 
     // السطر 4: تعليمات
-    printf(center_x(15, OLED_FONT_SMALL_WIDTH), 53,
+    print(center_x(15, OLED_FONT_SMALL_WIDTH), 53,
            OLED_FONT_SMALL, OLED_WHITE, STR_HINT[0]);
 }
 
@@ -553,14 +554,14 @@ function draw_status_line() {
     } else {
         if(menu_idx == 2) {
             // Shot Power: عرض الحالة الحالية
-            printf(center_x(9, OLED_FONT_MEDIUM_WIDTH), 22,
+            print(center_x(9, OLED_FONT_MEDIUM_WIDTH), 22,
                    OLED_FONT_MEDIUM, OLED_WHITE, SHOT_POWER_STR[draw_st]);
         } else {
             if(draw_st > 0) {
-                printf(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
+                print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
                        OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
             } else {
-                printf(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
+                print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
                        OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
             }
         }
@@ -569,11 +570,11 @@ function draw_status_line() {
 
 function draw_info_line() {
     // MOD:X  على اليسار
-    printf(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_MOD_LBL[0]);
+    print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_MOD_LBL[0]);
     print_num_at(menu_idx + 1, 32, 40, OLED_FONT_SMALL);
 
     // VAL على اليمين
-    printf(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_VAL_LBL[0]);
+    print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_VAL_LBL[0]);
     print_num_at(get_mod_value(menu_idx), 100, 40, OLED_FONT_SMALL);
 }
 
