@@ -27,7 +27,7 @@
 //  [4] Touch Swipes   → 4 سحبات = 4 مهارات افتراضية
 //  [5] Trivela Shot   → L2+SQUARE — Power + Shortcut
 //  [6] Skills         → 8 مهارات، لكل واحدة Shortcut مستقل:
-//      Elastico, Rev Elastico, McGeady L/R, Berba L/R, Rainbow, Roulette
+//      Spin L/R, McGeady L/R, Berba L/R, Rainbow, Roulette
 //
 //==============================================================================
 
@@ -100,8 +100,8 @@ int trivela_opt_idx   = 0;
 // Mod 6: Skills — 8 مهارات، كل واحدة لها Shortcut مستقل
 int mod_skills        = 0;
 int skill_idx         = 0;     // 0..7 = المهارة المعروضة في القائمة
-int sk_elastico       = 15;
-int sk_rev_elastico   = 15;
+int sk_spin_l         = 15;
+int sk_spin_r         = 15;
 int sk_mcgeady_l      = 15;
 int sk_mcgeady_r      = 15;
 int sk_berba_l        = 15;
@@ -166,8 +166,8 @@ const string STR_SK_LBL      = "Sk:";
 const string STR_DBL_LBL     = "Dbl:";
 
 // أسماء المهارات
-const string SK_ELASTICO     = "Elastico";
-const string SK_REV_ELASTICO = "Rev Elastico";
+const string SK_SPIN_L       = "Spin L";
+const string SK_SPIN_R       = "Spin R";
 const string SK_MCGEADY_L    = "McGeady L";
 const string SK_MCGEADY_R    = "McGeady R";
 const string SK_BERBA_L      = "Berba L";
@@ -222,14 +222,14 @@ init {
     trivela_power    = get_pvar(SPVAR_17, 50, 1500, 265);
     trivela_shortcut = get_pvar(SPVAR_18, 0, 15,   15);
     mod_skills       = get_pvar(SPVAR_19, 0, 1,    0);
-    sk_elastico      = get_pvar(SPVAR_20, 0, 15,   15);
-    sk_rev_elastico  = get_pvar(SPVAR_21, 0, 15,   15);
-    sk_mcgeady_l     = get_pvar(SPVAR_22, 0, 15,   15);
-    sk_mcgeady_r     = get_pvar(SPVAR_23, 0, 15,   15);
-    sk_berba_l       = get_pvar(SPVAR_24, 0, 15,   15);
-    sk_berba_r       = get_pvar(SPVAR_25, 0, 15,   15);
-    sk_rainbow       = get_pvar(SPVAR_26, 0, 15,   15);
-    sk_roulette      = get_pvar(SPVAR_27, 0, 15,   15);
+    sk_spin_l        = get_pvar(SPVAR_30, 0, 15,   15);
+    sk_spin_r        = get_pvar(SPVAR_31, 0, 15,   15);
+    sk_mcgeady_l     = get_pvar(SPVAR_32, 0, 15,   15);
+    sk_mcgeady_r     = get_pvar(SPVAR_33, 0, 15,   15);
+    sk_berba_l       = get_pvar(SPVAR_34, 0, 15,   15);
+    sk_berba_r       = get_pvar(SPVAR_35, 0, 15,   15);
+    sk_rainbow       = get_pvar(SPVAR_36, 0, 15,   15);
+    sk_roulette      = get_pvar(SPVAR_37, 0, 15,   15);
     finesse_dbl_btn  = get_pvar(SPVAR_28, 0, 11,   11);
 }
 
@@ -466,15 +466,19 @@ combo TrivelaCombo {
 //==============================================================================
 //  SKILLS COMBOS
 //==============================================================================
-combo SkillElastico {
-    set_val(PS4_RX,  100); wait(120);
+// Spin Left: RS تحت → يسار (نصف دائرة)
+combo SkillSpinLeft {
+    set_val(PS4_RY,  100); wait(120);
     set_val(PS4_RX, -100); wait(120);
+    set_val(PS4_RY,    0);
     set_val(PS4_RX,    0); wait(60);
 }
 
-combo SkillRevElastico {
-    set_val(PS4_RX, -100); wait(120);
+// Spin Right: RS تحت → يمين (نصف دائرة)
+combo SkillSpinRight {
+    set_val(PS4_RY,  100); wait(120);
     set_val(PS4_RX,  100); wait(120);
+    set_val(PS4_RY,    0);
     set_val(PS4_RX,    0); wait(60);
 }
 
@@ -526,8 +530,8 @@ combo SkillRoulette {
 //  SKILLS HANDLERS
 //==============================================================================
 function run_skills() {
-    if(check_shortcut_press(sk_elastico))     combo_run(SkillElastico);
-    if(check_shortcut_press(sk_rev_elastico)) combo_run(SkillRevElastico);
+    if(check_shortcut_press(sk_spin_l))     combo_run(SkillSpinLeft);
+    if(check_shortcut_press(sk_spin_r)) combo_run(SkillSpinRight);
     if(check_shortcut_press(sk_mcgeady_l))    combo_run(SkillMcGeadyL);
     if(check_shortcut_press(sk_mcgeady_r))    combo_run(SkillMcGeadyR);
     if(check_shortcut_press(sk_berba_l))      combo_run(SkillBerbaL);
@@ -557,8 +561,8 @@ function check_shortcut_press(sh_idx) {
 }
 
 function any_skill_uses_swipe() {
-    if(sk_elastico     >= 11 && sk_elastico     <= 14) return 1;
-    if(sk_rev_elastico >= 11 && sk_rev_elastico <= 14) return 1;
+    if(sk_spin_l     >= 11 && sk_spin_l     <= 14) return 1;
+    if(sk_spin_r >= 11 && sk_spin_r <= 14) return 1;
     if(sk_mcgeady_l    >= 11 && sk_mcgeady_l    <= 14) return 1;
     if(sk_mcgeady_r    >= 11 && sk_mcgeady_r    <= 14) return 1;
     if(sk_berba_l      >= 11 && sk_berba_l      <= 14) return 1;
@@ -569,8 +573,8 @@ function any_skill_uses_swipe() {
 }
 
 function get_skill_shortcut(idx) {
-    if(idx == 0) return sk_elastico;
-    if(idx == 1) return sk_rev_elastico;
+    if(idx == 0) return sk_spin_l;
+    if(idx == 1) return sk_spin_r;
     if(idx == 2) return sk_mcgeady_l;
     if(idx == 3) return sk_mcgeady_r;
     if(idx == 4) return sk_berba_l;
@@ -581,8 +585,8 @@ function get_skill_shortcut(idx) {
 }
 
 function set_skill_shortcut(idx, val) {
-    if(idx == 0)      sk_elastico     = val;
-    else if(idx == 1) sk_rev_elastico = val;
+    if(idx == 0)      sk_spin_l     = val;
+    else if(idx == 1) sk_spin_r = val;
     else if(idx == 2) sk_mcgeady_l    = val;
     else if(idx == 3) sk_mcgeady_r    = val;
     else if(idx == 4) sk_berba_l      = val;
@@ -599,8 +603,8 @@ function cycle_skill_shortcut(idx, dir) {
 }
 
 function print_skill_name(idx, x, y, font) {
-    if(idx == 0)      print(x, y, font, OLED_WHITE, SK_ELASTICO[0]);
-    else if(idx == 1) print(x, y, font, OLED_WHITE, SK_REV_ELASTICO[0]);
+    if(idx == 0)      print(x, y, font, OLED_WHITE, SK_SPIN_L[0]);
+    else if(idx == 1) print(x, y, font, OLED_WHITE, SK_SPIN_R[0]);
     else if(idx == 2) print(x, y, font, OLED_WHITE, SK_MCGEADY_L[0]);
     else if(idx == 3) print(x, y, font, OLED_WHITE, SK_MCGEADY_R[0]);
     else if(idx == 4) print(x, y, font, OLED_WHITE, SK_BERBA_L[0]);
@@ -1278,13 +1282,13 @@ function save_settings() {
     set_pvar(SPVAR_17, trivela_power);
     set_pvar(SPVAR_18, trivela_shortcut);
     set_pvar(SPVAR_19, mod_skills);
-    set_pvar(SPVAR_20, sk_elastico);
-    set_pvar(SPVAR_21, sk_rev_elastico);
-    set_pvar(SPVAR_22, sk_mcgeady_l);
-    set_pvar(SPVAR_23, sk_mcgeady_r);
-    set_pvar(SPVAR_24, sk_berba_l);
-    set_pvar(SPVAR_25, sk_berba_r);
-    set_pvar(SPVAR_26, sk_rainbow);
-    set_pvar(SPVAR_27, sk_roulette);
+    set_pvar(SPVAR_30, sk_spin_l);
+    set_pvar(SPVAR_31, sk_spin_r);
+    set_pvar(SPVAR_32, sk_mcgeady_l);
+    set_pvar(SPVAR_33, sk_mcgeady_r);
+    set_pvar(SPVAR_34, sk_berba_l);
+    set_pvar(SPVAR_35, sk_berba_r);
+    set_pvar(SPVAR_36, sk_rainbow);
+    set_pvar(SPVAR_37, sk_roulette);
     set_pvar(SPVAR_28, finesse_dbl_btn);
 }
