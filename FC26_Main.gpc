@@ -110,10 +110,9 @@ int sk_rainbow        = 15;
 int sk_roulette       = 15;
 
 // Smart Spin: متغيرات اكتشاف اتجاه LS ودوران RS
-int ls_zone           = -1;    // -1 = neutral، 0..7 = 8 اتجاهات
-int ls_lx_snap        = 0;
-int ls_ly_snap        = 0;
-int rot_z             = 0;     // مؤشر البحث
+int ls_zone           = -1;    // -1 = neutral، 0 = active (قراءة continuous)
+int ls_lx_snap        = 0;     // LS X الخام (-100..100)
+int ls_ly_snap        = 0;     // LS Y الخام (-100..100)
 int rot_world_x       = 0;     // ناتج التحويل X
 int rot_world_y       = 0;     // ناتج التحويل Y
 int spin_step1_x      = 0;
@@ -495,67 +494,33 @@ combo SkillSpinSmart {
 }
 
 //==============================================================================
-//  SMART SPIN — تدوير حركة RS حسب اتجاه LS
+//  SMART SPIN — تدوير حركة RS حسب اتجاه LS (Continuous / دقة كاملة)
 //==============================================================================
-// جدول الـ 8 zones (snapped LX, LY)
-const int ZONE_LX_LY [][] = {
-    {    0, -100 },  // 0: Up
-    {  100, -100 },  // 1: Up-R
-    {  100,    0 },  // 2: Right
-    {  100,  100 },  // 3: Dn-R
-    {    0,  100 },  // 4: Down
-    { -100,  100 },  // 5: Dn-L
-    { -100,    0 },  // 6: Left
-    { -100, -100 }   // 7: Up-L
-};
-
-// مصفوفة الدوران لكل zone: { prx, pry, pdx, pdy }
+// نقرأ LX/LY مباشرة (بدون snap لـ zones).
+// مصفوفة الدوران تُحسب من قيم LS الخام:
+//   prx = -ly,  pry = lx,  pdx = -lx,  pdy = -ly
 // التحويل: world_x = (px * prx + py * pdx) / 100
 //          world_y = (px * pry + py * pdy) / 100
-const int ZONE_ROT [][] = {
-    {  100,    0,    0,  100 },  // 0: Up      (0°)
-    {   71,   71,  -71,   71 },  // 1: Up-R   (45°)
-    {    0,  100, -100,    0 },  // 2: Right  (90°)
-    {  -71,   71,  -71,  -71 },  // 3: Dn-R  (135°)
-    { -100,    0,    0, -100 },  // 4: Down  (180°)
-    {  -71,  -71,   71,  -71 },  // 5: Dn-L  (225°)
-    {    0, -100,  100,    0 },  // 6: Left  (270°)
-    {   71,  -71,   71,   71 }   // 7: Up-L  (315°)
-};
-
 function detect_ls_zone() {
-    if(get_val(PS4_LX) >= 25)       ls_lx_snap = 100;
-    else if(get_val(PS4_LX) <= -25) ls_lx_snap = -100;
-    else                            ls_lx_snap = 0;
+    ls_lx_snap = get_val(PS4_LX);
+    ls_ly_snap = get_val(PS4_LY);
 
-    if(get_val(PS4_LY) >= 25)       ls_ly_snap = 100;
-    else if(get_val(PS4_LY) <= -25) ls_ly_snap = -100;
-    else                            ls_ly_snap = 0;
-
-    if(ls_lx_snap == 0 && ls_ly_snap == 0) {
+    // Deadzone: إذا LS في المنتصف، اعتبره غير نشط
+    if(abs(ls_lx_snap) < 25 && abs(ls_ly_snap) < 25) {
         ls_zone = -1;
     } else {
-        ls_zone = -1;
-        rot_z = 0;
-        while(rot_z < 8) {
-            if(ZONE_LX_LY[rot_z][0] == ls_lx_snap && ZONE_LX_LY[rot_z][1] == ls_ly_snap) {
-                ls_zone = rot_z;
-                rot_z = 8;
-            } else {
-                rot_z = rot_z + 1;
-            }
-        }
+        ls_zone = 0;  // نشط (أي قيمة ≥ 0 تعني نشط)
     }
 }
 
-// تحويل قيم player frame (px, py) إلى world frame (rot_world_x, rot_world_y)
+// تحويل قيم player frame (px, py) إلى world frame باستخدام LS الخام
 function transform_to_world(px, py) {
     if(ls_zone < 0) {
         rot_world_x = px;
         rot_world_y = py;
     } else {
-        rot_world_x = (px * ZONE_ROT[ls_zone][0] + py * ZONE_ROT[ls_zone][2]) / 100;
-        rot_world_y = (px * ZONE_ROT[ls_zone][1] + py * ZONE_ROT[ls_zone][3]) / 100;
+        rot_world_x = (px * (-ls_ly_snap) + py * (-ls_lx_snap)) / 100;
+        rot_world_y = (px *   ls_lx_snap  + py * (-ls_ly_snap)) / 100;
     }
 }
 
