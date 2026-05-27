@@ -467,59 +467,59 @@ combo TrivelaCombo {
 //  SKILLS COMBOS
 //==============================================================================
 combo SkillElastico {
-    set_val(PS4_RX,  100); wait(60);
-    set_val(PS4_RX, -100); wait(60);
-    set_val(PS4_RX,    0);
+    set_val(PS4_RX,  100); wait(120);
+    set_val(PS4_RX, -100); wait(120);
+    set_val(PS4_RX,    0); wait(60);
 }
 
 combo SkillRevElastico {
-    set_val(PS4_RX, -100); wait(60);
-    set_val(PS4_RX,  100); wait(60);
-    set_val(PS4_RX,    0);
+    set_val(PS4_RX, -100); wait(120);
+    set_val(PS4_RX,  100); wait(120);
+    set_val(PS4_RX,    0); wait(60);
 }
 
 combo SkillMcGeadyL {
-    set_val(PS4_RY, -100); wait(60);
-    set_val(PS4_RX, -100); wait(60);
+    set_val(PS4_RY, -100); wait(120);
+    set_val(PS4_RX, -100); wait(120);
     set_val(PS4_RY,    0);
-    set_val(PS4_RX,    0);
+    set_val(PS4_RX,    0); wait(60);
 }
 
 combo SkillMcGeadyR {
-    set_val(PS4_RY, -100); wait(60);
-    set_val(PS4_RX,  100); wait(60);
+    set_val(PS4_RY, -100); wait(120);
+    set_val(PS4_RX,  100); wait(120);
     set_val(PS4_RY,    0);
-    set_val(PS4_RX,    0);
+    set_val(PS4_RX,    0); wait(60);
 }
 
 combo SkillBerbaL {
-    set_val(PS4_RY, -100); wait(40);
-    set_val(PS4_RX, -100); wait(40);
+    set_val(PS4_RY, -100); wait(100);
+    set_val(PS4_RX, -100); wait(100);
     set_val(PS4_RY,    0);
-    set_val(PS4_RX,    0);
+    set_val(PS4_RX,    0); wait(60);
 }
 
 combo SkillBerbaR {
-    set_val(PS4_RY, -100); wait(40);
-    set_val(PS4_RX,  100); wait(40);
+    set_val(PS4_RY, -100); wait(100);
+    set_val(PS4_RX,  100); wait(100);
     set_val(PS4_RY,    0);
-    set_val(PS4_RX,    0);
+    set_val(PS4_RX,    0); wait(60);
 }
 
 combo SkillRainbow {
-    set_val(PS4_RY,  100); wait(50);
-    set_val(PS4_RY, -100); wait(60);
-    set_val(PS4_RY, -100); wait(50);
-    set_val(PS4_RY,    0);
+    set_val(PS4_RY,  100); wait(120);
+    set_val(PS4_RY, -100); wait(120);
+    set_val(PS4_RY, -100); wait(120);
+    set_val(PS4_RY,    0); wait(60);
 }
 
 combo SkillRoulette {
-    set_val(PS4_RX,  100); wait(50);
-    set_val(PS4_RY,  100); wait(50);
-    set_val(PS4_RX, -100); wait(50);
-    set_val(PS4_RY, -100); wait(50);
+    set_val(PS4_RX,  100); wait(110);
+    set_val(PS4_RY,  100); wait(110);
+    set_val(PS4_RX, -100); wait(110);
+    set_val(PS4_RY, -100); wait(110);
     set_val(PS4_RX,    0);
-    set_val(PS4_RY,    0);
+    set_val(PS4_RY,    0); wait(60);
 }
 
 //==============================================================================
