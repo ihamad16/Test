@@ -524,28 +524,30 @@ function transform_to_world(px, py) {
     }
 }
 
-// إطلاق Spin Left: Step1 = forward نسبي، Step3 = يسار مطلق (-100, 0)
+// إطلاق Spin Left: Step1 = forward، Step3 = 90° يسار عن Step 1 (نسبي)
 function fire_spin_l() {
     detect_ls_zone();
     if(ls_zone >= 0) {
         transform_to_world(0, -100);
         spin_step1_x = rot_world_x;
         spin_step1_y = rot_world_y;
-        spin_step2_x = -100;
-        spin_step2_y = 0;
+        transform_to_world(-100, 0);
+        spin_step2_x = rot_world_x;
+        spin_step2_y = rot_world_y;
         combo_run(SkillSpinSmart);
     }
 }
 
-// إطلاق Spin Right: Step1 = forward نسبي، Step3 = يمين مطلق (100, 0)
+// إطلاق Spin Right: Step1 = forward، Step3 = 90° يمين عن Step 1 (نسبي)
 function fire_spin_r() {
     detect_ls_zone();
     if(ls_zone >= 0) {
         transform_to_world(0, -100);
         spin_step1_x = rot_world_x;
         spin_step1_y = rot_world_y;
-        spin_step2_x = 100;
-        spin_step2_y = 0;
+        transform_to_world(100, 0);
+        spin_step2_x = rot_world_x;
+        spin_step2_y = rot_world_y;
         combo_run(SkillSpinSmart);
     }
 }
