@@ -1,5 +1,5 @@
 //==============================================================================
-//  FC 26 - Sprint + Button Remap v3.0
+//  FC 26 - Sprint + Full Button Remap v4.0
 //  Author      : Hamad
 //  Platform    : PlayStation (PS4/PS5)
 //  Device      : Cronus Zen
@@ -17,11 +17,11 @@
 //
 //  في وضع التعديل:
 //  Mod 1 (Sprint): ←/→ = ±10  |  ↑/↓ = ±1
-//  Mod 2 (Remap):  ↑/↓ = تغيير الزر المعروض  |  ←/→ = تغيير وظيفته
+//  Mod 2 (Remap):  ↑/↓ = تغيير الزر  |  ←/→ = تغيير وظيفته
 //
 //  المودات:
-//  [1] Sprint Control  → R2+L2 = جري بنسبة قابلة للضبط (10..100)
-//  [2] Button Remap    → تبديل الأزرار (L1⇄R1, L2⇄R2, ✕⇄⭕, □⇄△)
+//  [1] Sprint Control → R2+L2 = جري بنسبة قابلة للضبط (10..100)
+//  [2] Button Remap   → كل زر يتحول لأي زر آخر (L1,R1,L2,R2,X,O,□,△)
 //
 //==============================================================================
 
@@ -36,7 +36,9 @@ define PaceCtrol    = PS4_L2;
 //------------------------------------------------------------------------------
 define MENU_TIMEOUT     = 8000;
 define SCREEN_SAVER_MS  = 5000;
-define MAX_MODS         = 1;       // 0..1 = 2 مودات
+define MAX_MODS         = 1;
+define BTN_COUNT        = 8;
+define TGT_DEFAULT      = 8;       // قيمة "افتراضي" (الزر يبقى كما هو)
 
 // LED Colors
 define LED_OFF    = 0;
@@ -55,22 +57,35 @@ int script_on      = TRUE;
 
 // Mod 1: Sprint
 int mod_sprint     = 1;
-int sprint_power   = 50;      // 10..100
+int sprint_power   = 50;
 
 // Mod 2: Button Remap
-int mod_remap      = 0;       // 0=OFF, 1=ON (تفعيل التبديلات)
-int swap_l1_r1     = 0;
-int swap_l2_r2     = 0;
-int swap_cross_o   = 0;       // CROSS ⇄ CIRCLE
-int swap_sq_tri    = 0;       // SQUARE ⇄ TRIANGLE
-int remap_btn_idx  = 0;       // 0..7 = الزر المعروض حالياً
+// أهداف كل زر: 0=L1, 1=R1, 2=L2, 3=R2, 4=Cross, 5=Circle, 6=Square, 7=Triangle, 8=Default
+int mod_remap      = 0;
+int tgt_l1         = 8;
+int tgt_r1         = 8;
+int tgt_l2         = 8;
+int tgt_r2         = 8;
+int tgt_cross      = 8;
+int tgt_circle     = 8;
+int tgt_square     = 8;
+int tgt_triangle   = 8;
+int remap_btn_idx  = 0;       // الزر المعروض حالياً في القائمة (0..7)
+
+// Snapshot القيم الأصلية (داخل apply_remap)
+int o_l1, o_r1, o_l2, o_r2, o_cross, o_circle, o_square, o_triangle;
+// القيم الجديدة المحسوبة
+int n_l1, n_r1, n_l2, n_r2, n_cross, n_circle, n_square, n_triangle;
+int route_dest;
+int cycle_tmp;
+int disp_target;
 
 //------------------------------------------------------------------------------
 // MENU STATE
 //------------------------------------------------------------------------------
 int menu_open      = FALSE;
 int edit_open      = FALSE;
-int menu_idx       = 0;       // 0=Sprint, 1=Remap
+int menu_idx       = 0;
 int splash_done    = FALSE;
 int splash_timer   = 0;
 int menu_timer     = 0;
@@ -90,19 +105,14 @@ const string STR_HINT       = "A/CROSS to Edit";
 const string STR_ENABLED    = "Enabled";
 const string STR_DISABLED   = "Disabled";
 
-// أسماء المودات
 const string STR_MOD_SPRINT = "Sprint Control";
 const string STR_MOD_REMAP  = "Button Remap";
 
-// تسميات Sprint
 const string STR_PWR_LBL    = "Power:";
-
-// تسميات Remap
 const string STR_BTN_LBL    = "Btn:";
 const string STR_ARROW      = "->";
 const string STR_DEFAULT    = "Default";
 
-// أسماء الأزرار (للعرض)
 const string BTN_L1   = "L1";
 const string BTN_R1   = "R1";
 const string BTN_L2   = "L2";
@@ -116,13 +126,17 @@ const string BTN_TR   = "Triangle";
 // INIT
 //------------------------------------------------------------------------------
 init {
-    mod_sprint    = get_pvar(SPVAR_1, 0, 1,    1);
-    sprint_power  = get_pvar(SPVAR_2, 10, 100, 50);
-    mod_remap     = get_pvar(SPVAR_3, 0, 1,    0);
-    swap_l1_r1    = get_pvar(SPVAR_4, 0, 1,    0);
-    swap_l2_r2    = get_pvar(SPVAR_5, 0, 1,    0);
-    swap_cross_o  = get_pvar(SPVAR_6, 0, 1,    0);
-    swap_sq_tri   = get_pvar(SPVAR_7, 0, 1,    0);
+    mod_sprint    = get_pvar(SPVAR_1,  0, 1,    1);
+    sprint_power  = get_pvar(SPVAR_2,  10, 100, 50);
+    mod_remap     = get_pvar(SPVAR_3,  0, 1,    0);
+    tgt_l1        = get_pvar(SPVAR_4,  0, 8,    8);
+    tgt_r1        = get_pvar(SPVAR_5,  0, 8,    8);
+    tgt_l2        = get_pvar(SPVAR_6,  0, 8,    8);
+    tgt_r2        = get_pvar(SPVAR_7,  0, 8,    8);
+    tgt_cross     = get_pvar(SPVAR_8,  0, 8,    8);
+    tgt_circle    = get_pvar(SPVAR_9,  0, 8,    8);
+    tgt_square    = get_pvar(SPVAR_10, 0, 8,    8);
+    tgt_triangle  = get_pvar(SPVAR_11, 0, 8,    8);
 }
 
 //==============================================================================
@@ -215,15 +229,10 @@ function run_features() {
         }
     }
 
-    // Button Remap: لازم يتنفذ أول قبل أي شي
-    if(mod_remap) {
-        if(swap_l1_r1)   swap(PS4_L1, PS4_R1);
-        if(swap_l2_r2)   swap(PS4_L2, PS4_R2);
-        if(swap_cross_o) swap(PS4_CROSS, PS4_CIRCLE);
-        if(swap_sq_tri)  swap(PS4_SQUARE, PS4_TRIANGLE);
-    }
+    // Button Remap لازم يتنفذ أول
+    if(mod_remap) apply_remap();
 
-    // Sprint Control: R2 + L2 = نسبة محددة
+    // Sprint Control
     if(mod_sprint) {
         if(get_val(SprintBtn) > 0 && get_val(PaceCtrol) > 0) {
             set_val(SprintBtn, sprint_power);
@@ -233,10 +242,93 @@ function run_features() {
 }
 
 //==============================================================================
+//  BUTTON REMAP ENGINE
+//==============================================================================
+function apply_remap() {
+    // 1) snapshot القيم الأصلية
+    o_l1       = get_val(PS4_L1);
+    o_r1       = get_val(PS4_R1);
+    o_l2       = get_val(PS4_L2);
+    o_r2       = get_val(PS4_R2);
+    o_cross    = get_val(PS4_CROSS);
+    o_circle   = get_val(PS4_CIRCLE);
+    o_square   = get_val(PS4_SQUARE);
+    o_triangle = get_val(PS4_TRIANGLE);
+
+    // 2) reset القيم الجديدة
+    n_l1 = 0; n_r1 = 0; n_l2 = 0; n_r2 = 0;
+    n_cross = 0; n_circle = 0; n_square = 0; n_triangle = 0;
+
+    // 3) كل زر يوجه قيمته إلى هدفه
+    route_value(o_l1,       tgt_l1,       0);
+    route_value(o_r1,       tgt_r1,       1);
+    route_value(o_l2,       tgt_l2,       2);
+    route_value(o_r2,       tgt_r2,       3);
+    route_value(o_cross,    tgt_cross,    4);
+    route_value(o_circle,   tgt_circle,   5);
+    route_value(o_square,   tgt_square,   6);
+    route_value(o_triangle, tgt_triangle, 7);
+
+    // 4) كتابة القيم النهائية
+    set_val(PS4_L1,       n_l1);
+    set_val(PS4_R1,       n_r1);
+    set_val(PS4_L2,       n_l2);
+    set_val(PS4_R2,       n_r2);
+    set_val(PS4_CROSS,    n_cross);
+    set_val(PS4_CIRCLE,   n_circle);
+    set_val(PS4_SQUARE,   n_square);
+    set_val(PS4_TRIANGLE, n_triangle);
+}
+
+// orig_val = قيمة الزر  |  target = الهدف (0..8)  |  source_idx = رقم الزر المصدر (0..7)
+function route_value(orig_val, target, source_idx) {
+    route_dest = target;
+    if(route_dest == TGT_DEFAULT) route_dest = source_idx;
+
+    if(route_dest == 0)      { if(orig_val > n_l1)       n_l1       = orig_val; }
+    else if(route_dest == 1) { if(orig_val > n_r1)       n_r1       = orig_val; }
+    else if(route_dest == 2) { if(orig_val > n_l2)       n_l2       = orig_val; }
+    else if(route_dest == 3) { if(orig_val > n_r2)       n_r2       = orig_val; }
+    else if(route_dest == 4) { if(orig_val > n_cross)    n_cross    = orig_val; }
+    else if(route_dest == 5) { if(orig_val > n_circle)   n_circle   = orig_val; }
+    else if(route_dest == 6) { if(orig_val > n_square)   n_square   = orig_val; }
+    else if(route_dest == 7) { if(orig_val > n_triangle) n_triangle = orig_val; }
+}
+
+function get_target_for_btn(idx) {
+    if(idx == 0) return tgt_l1;
+    if(idx == 1) return tgt_r1;
+    if(idx == 2) return tgt_l2;
+    if(idx == 3) return tgt_r2;
+    if(idx == 4) return tgt_cross;
+    if(idx == 5) return tgt_circle;
+    if(idx == 6) return tgt_square;
+    if(idx == 7) return tgt_triangle;
+    return TGT_DEFAULT;
+}
+
+function set_target_for_btn(idx, val) {
+    if(idx == 0) tgt_l1 = val;
+    else if(idx == 1) tgt_r1 = val;
+    else if(idx == 2) tgt_l2 = val;
+    else if(idx == 3) tgt_r2 = val;
+    else if(idx == 4) tgt_cross = val;
+    else if(idx == 5) tgt_circle = val;
+    else if(idx == 6) tgt_square = val;
+    else if(idx == 7) tgt_triangle = val;
+}
+
+function cycle_target(idx, dir) {
+    cycle_tmp = get_target_for_btn(idx) + dir;
+    if(cycle_tmp > 8) cycle_tmp = 0;
+    if(cycle_tmp < 0) cycle_tmp = 8;
+    set_target_for_btn(idx, cycle_tmp);
+}
+
+//==============================================================================
 //  MENU INPUT
 //==============================================================================
 function handle_menu_input() {
-    // خروج وحفظ (CIRCLE)
     if(event_press(PS4_CIRCLE)) {
         if(edit_open) {
             edit_open = FALSE;
@@ -253,7 +345,6 @@ function handle_menu_input() {
         menu_timer = MENU_TIMEOUT;
     }
 
-    // دخول/خروج وضع التعديل (CROSS)
     if(event_press(PS4_CROSS)) {
         edit_open = !edit_open;
         need_redraw = TRUE;
@@ -261,7 +352,6 @@ function handle_menu_input() {
     }
 
     if(!edit_open) {
-        // التنقل بين المودات
         if(event_press(PS4_DOWN)) {
             menu_idx = menu_idx + 1;
             if(menu_idx > MAX_MODS) menu_idx = 0;
@@ -274,7 +364,6 @@ function handle_menu_input() {
             need_redraw = TRUE;
             menu_timer = MENU_TIMEOUT;
         }
-        // ON/OFF للمود الحالي
         if(event_press(PS4_RIGHT)) {
             toggle_mod(1);
             need_redraw = TRUE;
@@ -286,47 +375,43 @@ function handle_menu_input() {
             menu_timer = MENU_TIMEOUT;
         }
     } else {
-        // وضع التعديل: السلوك حسب المود الحالي
         if(menu_idx == 0) {
-            // Sprint: تغيير power
+            // Sprint
             if(event_press(PS4_RIGHT)) {
                 sprint_power = clamp_val(sprint_power + 10, 10, 100);
-                need_redraw = TRUE;
-                menu_timer = MENU_TIMEOUT;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_LEFT)) {
                 sprint_power = clamp_val(sprint_power - 10, 10, 100);
-                need_redraw = TRUE;
-                menu_timer = MENU_TIMEOUT;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_UP)) {
                 sprint_power = clamp_val(sprint_power + 1, 10, 100);
-                need_redraw = TRUE;
-                menu_timer = MENU_TIMEOUT;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_DOWN)) {
                 sprint_power = clamp_val(sprint_power - 1, 10, 100);
-                need_redraw = TRUE;
-                menu_timer = MENU_TIMEOUT;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 1) {
-            // Remap: ↑/↓ يغير الزر، ←/→ يبدل الـ swap
+            // Remap
             if(event_press(PS4_DOWN)) {
                 remap_btn_idx = remap_btn_idx + 1;
                 if(remap_btn_idx > 7) remap_btn_idx = 0;
-                need_redraw = TRUE;
-                menu_timer = MENU_TIMEOUT;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_UP)) {
                 remap_btn_idx = remap_btn_idx - 1;
                 if(remap_btn_idx < 0) remap_btn_idx = 7;
-                need_redraw = TRUE;
-                menu_timer = MENU_TIMEOUT;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
-            if(event_press(PS4_RIGHT) || event_press(PS4_LEFT)) {
-                toggle_swap_for_btn(remap_btn_idx);
-                need_redraw = TRUE;
-                menu_timer = MENU_TIMEOUT;
+            if(event_press(PS4_RIGHT)) {
+                cycle_target(remap_btn_idx, 1);
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_LEFT)) {
+                cycle_target(remap_btn_idx, -1);
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         }
     }
@@ -335,21 +420,6 @@ function handle_menu_input() {
 function toggle_mod(val) {
     if(menu_idx == 0) mod_sprint = val;
     else if(menu_idx == 1) mod_remap = val;
-}
-
-function toggle_swap_for_btn(idx) {
-    if(idx == 0 || idx == 1) swap_l1_r1   = !swap_l1_r1;
-    else if(idx == 2 || idx == 3) swap_l2_r2   = !swap_l2_r2;
-    else if(idx == 4 || idx == 5) swap_cross_o = !swap_cross_o;
-    else if(idx == 6 || idx == 7) swap_sq_tri  = !swap_sq_tri;
-}
-
-function get_swap_for_btn(idx) {
-    if(idx == 0 || idx == 1) return swap_l1_r1;
-    if(idx == 2 || idx == 3) return swap_l2_r2;
-    if(idx == 4 || idx == 5) return swap_cross_o;
-    if(idx == 6 || idx == 7) return swap_sq_tri;
-    return 0;
 }
 
 function clamp_val(v, mn, mx) {
@@ -374,17 +444,14 @@ function draw_menu() {
     if(menu_idx == 0) draw_sprint_menu();
     else if(menu_idx == 1) draw_remap_menu();
 
-    // السطر 4: تعليمات
     print(center_x(15, OLED_FONT_SMALL_WIDTH), 53,
           OLED_FONT_SMALL, OLED_WHITE, STR_HINT[0]);
 }
 
 function draw_sprint_menu() {
-    // السطر 1: اسم المود
     print(center_x(14, OLED_FONT_SMALL_WIDTH), 4,
           OLED_FONT_SMALL, OLED_WHITE, STR_MOD_SPRINT[0]);
 
-    // السطر 2: الحالة أو القيمة
     if(edit_open) {
         print_num_center(sprint_power, 22);
     } else {
@@ -397,19 +464,15 @@ function draw_sprint_menu() {
         }
     }
 
-    // السطر 3: Power: XX
     print(30, 40, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
     print_num_at(sprint_power, 78, 40, OLED_FONT_SMALL);
 }
 
 function draw_remap_menu() {
-    // السطر 1: اسم المود
     print(center_x(12, OLED_FONT_SMALL_WIDTH), 4,
           OLED_FONT_SMALL, OLED_WHITE, STR_MOD_REMAP[0]);
 
-    // السطر 2: الحالة (Enabled/Disabled) أو الزر المعروض
     if(edit_open) {
-        // عرض: BTN  ->  TARGET
         draw_btn_mapping(remap_btn_idx);
     } else {
         if(mod_remap > 0) {
@@ -421,32 +484,21 @@ function draw_remap_menu() {
         }
     }
 
-    // السطر 3: Btn: X/8
     print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_BTN_LBL[0]);
     print_num_at(remap_btn_idx + 1, 30, 40, OLED_FONT_SMALL);
 }
 
 function draw_btn_mapping(idx) {
-    // نطبع: SOURCE -> TARGET
-    print_btn_name(idx, 10, 22, OLED_FONT_SMALL);
-    print(55, 22, OLED_FONT_SMALL, OLED_WHITE, STR_ARROW[0]);
-    if(get_swap_for_btn(idx)) {
-        print_btn_name(swap_target(idx), 75, 22, OLED_FONT_SMALL);
-    } else {
-        print(75, 22, OLED_FONT_SMALL, OLED_WHITE, STR_DEFAULT[0]);
-    }
-}
+    // SOURCE -> TARGET
+    print_btn_name(idx, 8, 22, OLED_FONT_SMALL);
+    print(50, 22, OLED_FONT_SMALL, OLED_WHITE, STR_ARROW[0]);
 
-function swap_target(idx) {
-    if(idx == 0) return 1;
-    if(idx == 1) return 0;
-    if(idx == 2) return 3;
-    if(idx == 3) return 2;
-    if(idx == 4) return 5;
-    if(idx == 5) return 4;
-    if(idx == 6) return 7;
-    if(idx == 7) return 6;
-    return idx;
+    disp_target = get_target_for_btn(idx);
+    if(disp_target == TGT_DEFAULT) {
+        print(70, 22, OLED_FONT_SMALL, OLED_WHITE, STR_DEFAULT[0]);
+    } else {
+        print_btn_name(disp_target, 70, 22, OLED_FONT_SMALL);
+    }
 }
 
 function print_btn_name(idx, x, y, font) {
@@ -535,11 +587,15 @@ function colourled(color) {
 //  SAVE
 //==============================================================================
 function save_settings() {
-    set_pvar(SPVAR_1, mod_sprint);
-    set_pvar(SPVAR_2, sprint_power);
-    set_pvar(SPVAR_3, mod_remap);
-    set_pvar(SPVAR_4, swap_l1_r1);
-    set_pvar(SPVAR_5, swap_l2_r2);
-    set_pvar(SPVAR_6, swap_cross_o);
-    set_pvar(SPVAR_7, swap_sq_tri);
+    set_pvar(SPVAR_1,  mod_sprint);
+    set_pvar(SPVAR_2,  sprint_power);
+    set_pvar(SPVAR_3,  mod_remap);
+    set_pvar(SPVAR_4,  tgt_l1);
+    set_pvar(SPVAR_5,  tgt_r1);
+    set_pvar(SPVAR_6,  tgt_l2);
+    set_pvar(SPVAR_7,  tgt_r2);
+    set_pvar(SPVAR_8,  tgt_cross);
+    set_pvar(SPVAR_9,  tgt_circle);
+    set_pvar(SPVAR_10, tgt_square);
+    set_pvar(SPVAR_11, tgt_triangle);
 }
