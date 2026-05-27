@@ -47,6 +47,8 @@ define TGT_DEFAULT      = 8;
 define SH_DISABLED      = 15;       // 0..10 = أزرار، 11..14 = سحبات، 15 = Off
 define SWIPE_THRESHOLD  = 30;       // الحد الأدنى لاعتبار الحركة سحبة
 define SKILLS_COUNT     = 8;
+define DBL_TAP_WINDOW   = 300;      // النافذة الزمنية للدبل تاب (ms)
+define DBL_OFF          = 11;       // 0..10 = زر، 11 = Off
 
 // LED Colors
 define LED_OFF    = 0;
@@ -83,7 +85,11 @@ int remap_btn_idx  = 0;
 int mod_finesse       = 0;
 int finesse_power     = 265;   // 50..1500 ms (مدة الضغط على زر التسديد)
 int finesse_shortcut  = 15;    // 0..10 = زر، 11..14 = سحبات، 15 = Disabled
-int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut
+int finesse_dbl_btn   = 11;    // 0..10 = زر للدبل تاب، 11 = Off
+int finesse_dbl_timer = 0;     // عداد نافذة الدبل تاب
+int finesse_dbl_count = 0;     // عدد الضغطات داخل النافذة
+int dbl_was_pressed   = 0;     // temp للكشف
+int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut, 2=Dbl-Tap
 
 // Mod 5: Trivela Shot (L2 + SQUARE) — نفس الفينس بس بـ L2
 int mod_trivela       = 0;
@@ -157,6 +163,7 @@ const string STR_MOD_TRIVELA = "Trivela Shot";
 const string STR_MOD_SKILLS  = "Skills";
 const string STR_SWIPE_INFO  = "4-Dir Skills";
 const string STR_SK_LBL      = "Sk:";
+const string STR_DBL_LBL     = "Dbl:";
 
 // أسماء المهارات
 const string SK_ELASTICO     = "Elastico";
@@ -223,6 +230,7 @@ init {
     sk_berba_r       = get_pvar(SPVAR_25, 0, 15,   15);
     sk_rainbow       = get_pvar(SPVAR_26, 0, 15,   15);
     sk_roulette      = get_pvar(SPVAR_27, 0, 15,   15);
+    finesse_dbl_btn  = get_pvar(SPVAR_28, 0, 11,   11);
 }
 
 //==============================================================================
@@ -333,6 +341,9 @@ function run_features() {
     if(mod_finesse) {
         // الفينس يستهلك السحبة إن كانت اختصاره (يمسح last_swipe داخل check)
         if(check_finesse_shortcut()) combo_run(FinesseCombo);
+
+        // دبل تاب لزر معين
+        if(check_finesse_dbl_tap()) combo_run(FinesseCombo);
 
         // Cap على SQUARE فقط (مع R1)
         if(get_val(PS4_R1) && get_val(PS4_SQUARE) && get_ptime(PS4_SQUARE) >= finesse_power) {
@@ -724,6 +735,66 @@ function cycle_finesse_shortcut(dir) {
     if(finesse_shortcut < 0) finesse_shortcut = SH_DISABLED;
 }
 
+function cycle_finesse_dbl(dir) {
+    finesse_dbl_btn = finesse_dbl_btn + dir;
+    if(finesse_dbl_btn > DBL_OFF) finesse_dbl_btn = 0;
+    if(finesse_dbl_btn < 0) finesse_dbl_btn = DBL_OFF;
+}
+
+// كشف الدبل تاب: ضغطتان متتاليتان على الزر المختار خلال DBL_TAP_WINDOW ms
+function check_finesse_dbl_tap() {
+    if(finesse_dbl_btn == DBL_OFF) return 0;
+
+    // تنازل العداد
+    if(finesse_dbl_timer > 0) {
+        finesse_dbl_timer = finesse_dbl_timer - get_rtime();
+        if(finesse_dbl_timer <= 0) {
+            finesse_dbl_count = 0;
+        }
+    }
+
+    // هل الزر المختار تم ضغطه الآن؟
+    dbl_was_pressed = 0;
+    if(finesse_dbl_btn == 0  && event_press(PS4_L1))       dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 1  && event_press(PS4_R1))       dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 2  && event_press(PS4_L2))       dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 3  && event_press(PS4_R2))       dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 4  && event_press(PS4_CROSS))    dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 5  && event_press(PS4_CIRCLE))   dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 6  && event_press(PS4_SQUARE))   dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 7  && event_press(PS4_TRIANGLE)) dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 8  && event_press(PS4_L3))       dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 9  && event_press(PS4_R3))       dbl_was_pressed = 1;
+    if(finesse_dbl_btn == 10 && event_press(PS4_TOUCH))    dbl_was_pressed = 1;
+
+    if(dbl_was_pressed) {
+        finesse_dbl_count = finesse_dbl_count + 1;
+        if(finesse_dbl_count >= 2) {
+            finesse_dbl_count = 0;
+            finesse_dbl_timer = 0;
+            return 1;
+        }
+        finesse_dbl_timer = DBL_TAP_WINDOW;
+    }
+    return 0;
+}
+
+// طباعة اسم الزر للدبل تاب (0..10 أزرار، 11 = Off)
+function print_dbl_btn_name(idx, x, y, font) {
+    if(idx == 0)      print(x, y, font, OLED_WHITE, BTN_L1[0]);
+    else if(idx == 1)  print(x, y, font, OLED_WHITE, BTN_R1[0]);
+    else if(idx == 2)  print(x, y, font, OLED_WHITE, BTN_L2[0]);
+    else if(idx == 3)  print(x, y, font, OLED_WHITE, BTN_R2[0]);
+    else if(idx == 4)  print(x, y, font, OLED_WHITE, BTN_CR[0]);
+    else if(idx == 5)  print(x, y, font, OLED_WHITE, BTN_CI[0]);
+    else if(idx == 6)  print(x, y, font, OLED_WHITE, BTN_SQ[0]);
+    else if(idx == 7)  print(x, y, font, OLED_WHITE, BTN_TR[0]);
+    else if(idx == 8)  print(x, y, font, OLED_WHITE, BTN_L3[0]);
+    else if(idx == 9)  print(x, y, font, OLED_WHITE, BTN_R3[0]);
+    else if(idx == 10) print(x, y, font, OLED_WHITE, BTN_TP[0]);
+    else if(idx == 11) print(x, y, font, OLED_WHITE, STR_OFF[0]);
+}
+
 function cycle_trivela_shortcut(dir) {
     trivela_shortcut = trivela_shortcut + dir;
     if(trivela_shortcut > SH_DISABLED) trivela_shortcut = 0;
@@ -815,29 +886,27 @@ function handle_menu_input() {
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 2) {
-            // Finesse: ↑/↓ يبدل الخيار، ←/→ يعدل القيمة
+            // Finesse: ↑/↓ يبدل بين 3 خيارات، ←/→ يعدل القيمة
             if(event_press(PS4_DOWN)) {
-                finesse_opt_idx = 1 - finesse_opt_idx;
+                finesse_opt_idx = finesse_opt_idx + 1;
+                if(finesse_opt_idx > 2) finesse_opt_idx = 0;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_UP)) {
-                finesse_opt_idx = 1 - finesse_opt_idx;
+                finesse_opt_idx = finesse_opt_idx - 1;
+                if(finesse_opt_idx < 0) finesse_opt_idx = 2;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_RIGHT)) {
-                if(finesse_opt_idx == 0) {
-                    finesse_power = clamp_val(finesse_power + 5, 50, 1500);
-                } else {
-                    cycle_finesse_shortcut(1);
-                }
+                if(finesse_opt_idx == 0)      finesse_power = clamp_val(finesse_power + 5, 50, 1500);
+                else if(finesse_opt_idx == 1) cycle_finesse_shortcut(1);
+                else                          cycle_finesse_dbl(1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_LEFT)) {
-                if(finesse_opt_idx == 0) {
-                    finesse_power = clamp_val(finesse_power - 5, 50, 1500);
-                } else {
-                    cycle_finesse_shortcut(-1);
-                }
+                if(finesse_opt_idx == 0)      finesse_power = clamp_val(finesse_power - 5, 50, 1500);
+                else if(finesse_opt_idx == 1) cycle_finesse_shortcut(-1);
+                else                          cycle_finesse_dbl(-1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 4) {
@@ -974,33 +1043,34 @@ function draw_finesse_menu() {
           OLED_FONT_SMALL, OLED_WHITE, STR_MOD_FINESSE[0]);
 
     if(edit_open) {
-        // عرض الخيارين مع مؤشر >
-        // الخيار الأول: Power
-        if(finesse_opt_idx == 0) {
-            print(4, 20, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
-        }
-        print(14, 20, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
-        print_num_at(finesse_power, 60, 20, OLED_FONT_SMALL);
+        // 3 خيارات مع مؤشر > على الحالي
+        // الخيار 1: Power (y=18)
+        if(finesse_opt_idx == 0) print(2, 18, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        print(12, 18, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
+        print_num_at(finesse_power, 58, 18, OLED_FONT_SMALL);
 
-        // الخيار الثاني: Shortcut
-        if(finesse_opt_idx == 1) {
-            print(4, 33, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
-        }
-        print(14, 33, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
-        print_shortcut_name(finesse_shortcut, 60, 33, OLED_FONT_SMALL);
+        // الخيار 2: Shortcut (y=29)
+        if(finesse_opt_idx == 1) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
+        print_shortcut_name(finesse_shortcut, 58, 29, OLED_FONT_SMALL);
+
+        // الخيار 3: Double-Tap (y=40)
+        if(finesse_opt_idx == 2) print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_DBL_LBL[0]);
+        print_dbl_btn_name(finesse_dbl_btn, 58, 40, OLED_FONT_SMALL);
     } else {
         if(mod_finesse > 0) {
-            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
+            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 20,
                   OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
         } else {
-            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
+            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 20,
                   OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
         }
-        // sub info: power والshortcut بشكل مختصر
+        // معلومات مختصرة
         print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
         print_num_at(finesse_power, 36, 40, OLED_FONT_SMALL);
-        print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
-        print_shortcut_name(finesse_shortcut, 100, 40, OLED_FONT_SMALL);
+        print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_DBL_LBL[0]);
+        print_dbl_btn_name(finesse_dbl_btn, 95, 40, OLED_FONT_SMALL);
     }
 }
 
@@ -1220,4 +1290,5 @@ function save_settings() {
     set_pvar(SPVAR_25, sk_berba_r);
     set_pvar(SPVAR_26, sk_rainbow);
     set_pvar(SPVAR_27, sk_roulette);
+    set_pvar(SPVAR_28, finesse_dbl_btn);
 }
