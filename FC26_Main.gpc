@@ -23,12 +23,13 @@
 //  المودات:
 //  [1] Sprint Control → R2+L2 = جري بنسبة (10..100)
 //  [2] Button Remap   → كل زر يتحول لأي زر آخر
-//  [3] Finesse Shot   → Power + Shortcut button
-//  [4] Touch Swipes   → 4 سحبات على التاتش = 4 مهارات
+//  [3] Finesse Shot   → R1+SQUARE — Power + Shortcut
+//  [4] Touch Swipes   → 4 سحبات = 4 مهارات
 //      Swipe Up    → Rainbow Flick
 //      Swipe Down  → Drag Back
 //      Swipe Left  → Reverse Elastico
 //      Swipe Right → Elastico
+//  [5] Trivela Shot   → L2+SQUARE — Power + Shortcut
 //
 //==============================================================================
 
@@ -43,7 +44,7 @@ define PaceCtrol    = PS4_L2;
 //------------------------------------------------------------------------------
 define MENU_TIMEOUT     = 8000;
 define SCREEN_SAVER_MS  = 5000;
-define MAX_MODS         = 3;
+define MAX_MODS         = 4;
 define TGT_DEFAULT      = 8;
 define SH_DISABLED      = 15;       // 0..10 = أزرار، 11..14 = سحبات، 15 = Off
 define SWIPE_THRESHOLD  = 30;       // الحد الأدنى لاعتبار الحركة سحبة
@@ -84,6 +85,12 @@ int mod_finesse       = 0;
 int finesse_power     = 300;   // 50..1500 ms (مدة الضغط على زر التسديد)
 int finesse_shortcut  = 15;    // 0..10 = زر، 11..14 = سحبات، 15 = Disabled
 int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut
+
+// Mod 5: Trivela Shot (L2 + SQUARE) — نفس الفينس بس بـ L2
+int mod_trivela       = 0;
+int trivela_power     = 300;
+int trivela_shortcut  = 15;
+int trivela_opt_idx   = 0;
 
 // Mod 4: Touchpad Swipes
 int mod_swipe         = 0;
@@ -135,6 +142,7 @@ const string STR_MOD_SPRINT  = "Sprint Control";
 const string STR_MOD_REMAP   = "Button Remap";
 const string STR_MOD_FINESSE = "Finesse Shot";
 const string STR_MOD_SWIPE   = "Touch Swipes";
+const string STR_MOD_TRIVELA = "Trivela Shot";
 const string STR_SWIPE_INFO  = "4-Dir Skills";
 
 const string STR_PWR_LBL    = "Power:";
@@ -180,6 +188,9 @@ init {
     finesse_power    = get_pvar(SPVAR_13, 50, 1500, 300);
     finesse_shortcut = get_pvar(SPVAR_14, 0, 15,   15);
     mod_swipe        = get_pvar(SPVAR_15, 0, 1,    0);
+    mod_trivela      = get_pvar(SPVAR_16, 0, 1,    0);
+    trivela_power    = get_pvar(SPVAR_17, 50, 1500, 300);
+    trivela_shortcut = get_pvar(SPVAR_18, 0, 15,   15);
 }
 
 //==============================================================================
@@ -279,8 +290,10 @@ function run_features() {
         }
     }
 
-    // كشف السحبات أولاً إذا أي مود يحتاجها (الفينس قد يستخدم سحبة كاختصار)
-    if(mod_swipe || (mod_finesse && finesse_shortcut >= 11 && finesse_shortcut <= 14)) {
+    // كشف السحبات أولاً إذا أي مود يحتاجها (الفينس/الترافيلا قد يستخدم سحبة كاختصار)
+    if(mod_swipe ||
+       (mod_finesse && finesse_shortcut >= 11 && finesse_shortcut <= 14) ||
+       (mod_trivela && trivela_shortcut >= 11 && trivela_shortcut <= 14)) {
         detect_swipes();
     }
 
@@ -294,7 +307,17 @@ function run_features() {
         }
     }
 
-    // mod_swipe يطلق المهارات إن لم تُستهلك السحبة بواسطة الفينس
+    if(mod_trivela) {
+        // الترافيلا يستهلك السحبة إن كانت اختصاره
+        if(check_trivela_shortcut()) combo_run(TrivelaCombo);
+
+        // Cap على SQUARE (مع L2)
+        if(get_val(PS4_L2) && get_val(PS4_SQUARE) && get_ptime(PS4_SQUARE) >= trivela_power) {
+            set_val(PS4_SQUARE, 0);
+        }
+    }
+
+    // mod_swipe يطلق المهارات إن لم تُستهلك السحبة بواسطة الفينس/الترافيلا
     if(mod_swipe) {
         if(last_swipe == 1)      combo_run(SwipeUpCombo);
         else if(last_swipe == 2) combo_run(SwipeDownCombo);
@@ -383,6 +406,34 @@ combo FinesseCombo {
     wait(finesse_power);
     set_val(PS4_R1, 0);
     set_val(PS4_SQUARE, 0);
+}
+
+combo TrivelaCombo {
+    set_val(PS4_L2, 100);
+    set_val(PS4_SQUARE, 100);
+    wait(trivela_power);
+    set_val(PS4_L2, 0);
+    set_val(PS4_SQUARE, 0);
+}
+
+function check_trivela_shortcut() {
+    if(trivela_shortcut == SH_DISABLED) return 0;
+    if(trivela_shortcut == 0  && event_press(PS4_L1))       return 1;
+    if(trivela_shortcut == 1  && event_press(PS4_R1))       return 1;
+    if(trivela_shortcut == 2  && event_press(PS4_L2))       return 1;
+    if(trivela_shortcut == 3  && event_press(PS4_R2))       return 1;
+    if(trivela_shortcut == 4  && event_press(PS4_CROSS))    return 1;
+    if(trivela_shortcut == 5  && event_press(PS4_CIRCLE))   return 1;
+    if(trivela_shortcut == 6  && event_press(PS4_SQUARE))   return 1;
+    if(trivela_shortcut == 7  && event_press(PS4_TRIANGLE)) return 1;
+    if(trivela_shortcut == 8  && event_press(PS4_L3))       return 1;
+    if(trivela_shortcut == 9  && event_press(PS4_R3))       return 1;
+    if(trivela_shortcut == 10 && event_press(PS4_TOUCH))    return 1;
+    if(trivela_shortcut == 11 && last_swipe == 1) { last_swipe = 0; return 1; }
+    if(trivela_shortcut == 12 && last_swipe == 2) { last_swipe = 0; return 1; }
+    if(trivela_shortcut == 13 && last_swipe == 3) { last_swipe = 0; return 1; }
+    if(trivela_shortcut == 14 && last_swipe == 4) { last_swipe = 0; return 1; }
+    return 0;
 }
 
 function check_finesse_shortcut() {
@@ -485,10 +536,16 @@ function cycle_target(idx, dir) {
     set_target_for_btn(idx, cycle_tmp);
 }
 
-function cycle_shortcut(dir) {
+function cycle_finesse_shortcut(dir) {
     finesse_shortcut = finesse_shortcut + dir;
     if(finesse_shortcut > SH_DISABLED) finesse_shortcut = 0;
     if(finesse_shortcut < 0) finesse_shortcut = SH_DISABLED;
+}
+
+function cycle_trivela_shortcut(dir) {
+    trivela_shortcut = trivela_shortcut + dir;
+    if(trivela_shortcut > SH_DISABLED) trivela_shortcut = 0;
+    if(trivela_shortcut < 0) trivela_shortcut = SH_DISABLED;
 }
 
 //==============================================================================
@@ -589,7 +646,7 @@ function handle_menu_input() {
                 if(finesse_opt_idx == 0) {
                     finesse_power = clamp_val(finesse_power + 5, 50, 1500);
                 } else {
-                    cycle_shortcut(1);
+                    cycle_finesse_shortcut(1);
                 }
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
@@ -597,7 +654,33 @@ function handle_menu_input() {
                 if(finesse_opt_idx == 0) {
                     finesse_power = clamp_val(finesse_power - 5, 50, 1500);
                 } else {
-                    cycle_shortcut(-1);
+                    cycle_finesse_shortcut(-1);
+                }
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+        } else if(menu_idx == 4) {
+            // Trivela: نفس الفينس
+            if(event_press(PS4_DOWN)) {
+                trivela_opt_idx = 1 - trivela_opt_idx;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_UP)) {
+                trivela_opt_idx = 1 - trivela_opt_idx;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_RIGHT)) {
+                if(trivela_opt_idx == 0) {
+                    trivela_power = clamp_val(trivela_power + 5, 50, 1500);
+                } else {
+                    cycle_trivela_shortcut(1);
+                }
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_LEFT)) {
+                if(trivela_opt_idx == 0) {
+                    trivela_power = clamp_val(trivela_power - 5, 50, 1500);
+                } else {
+                    cycle_trivela_shortcut(-1);
                 }
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
@@ -610,6 +693,7 @@ function toggle_mod(val) {
     else if(menu_idx == 1) mod_remap = val;
     else if(menu_idx == 2) mod_finesse = val;
     else if(menu_idx == 3) mod_swipe = val;
+    else if(menu_idx == 4) mod_trivela = val;
 }
 
 function clamp_val(v, mn, mx) {
@@ -635,6 +719,7 @@ function draw_menu() {
     else if(menu_idx == 1) draw_remap_menu();
     else if(menu_idx == 2) draw_finesse_menu();
     else if(menu_idx == 3) draw_swipe_menu();
+    else if(menu_idx == 4) draw_trivela_menu();
 
     print(center_x(15, OLED_FONT_SMALL_WIDTH), 53,
           OLED_FONT_SMALL, OLED_WHITE, STR_HINT[0]);
@@ -712,6 +797,37 @@ function draw_finesse_menu() {
         print_num_at(finesse_power, 36, 40, OLED_FONT_SMALL);
         print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
         print_shortcut_name(finesse_shortcut, 100, 40, OLED_FONT_SMALL);
+    }
+}
+
+function draw_trivela_menu() {
+    print(center_x(12, OLED_FONT_SMALL_WIDTH), 4,
+          OLED_FONT_SMALL, OLED_WHITE, STR_MOD_TRIVELA[0]);
+
+    if(edit_open) {
+        if(trivela_opt_idx == 0) {
+            print(4, 20, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        }
+        print(14, 20, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
+        print_num_at(trivela_power, 60, 20, OLED_FONT_SMALL);
+
+        if(trivela_opt_idx == 1) {
+            print(4, 33, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        }
+        print(14, 33, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
+        print_shortcut_name(trivela_shortcut, 60, 33, OLED_FONT_SMALL);
+    } else {
+        if(mod_trivela > 0) {
+            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
+                  OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+        } else {
+            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
+                  OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+        }
+        print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
+        print_num_at(trivela_power, 36, 40, OLED_FONT_SMALL);
+        print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
+        print_shortcut_name(trivela_shortcut, 100, 40, OLED_FONT_SMALL);
     }
 }
 
@@ -863,4 +979,7 @@ function save_settings() {
     set_pvar(SPVAR_13, finesse_power);
     set_pvar(SPVAR_14, finesse_shortcut);
     set_pvar(SPVAR_15, mod_swipe);
+    set_pvar(SPVAR_16, mod_trivela);
+    set_pvar(SPVAR_17, trivela_power);
+    set_pvar(SPVAR_18, trivela_shortcut);
 }
