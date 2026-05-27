@@ -24,6 +24,11 @@
 //  [1] Sprint Control → R2+L2 = جري بنسبة (10..100)
 //  [2] Button Remap   → كل زر يتحول لأي زر آخر
 //  [3] Finesse Shot   → Power + Shortcut button
+//  [4] Touch Swipes   → 4 سحبات على التاتش = 4 مهارات
+//      Swipe Up    → Rainbow Flick
+//      Swipe Down  → Drag Back
+//      Swipe Left  → Reverse Elastico
+//      Swipe Right → Elastico
 //
 //==============================================================================
 
@@ -38,9 +43,10 @@ define PaceCtrol    = PS4_L2;
 //------------------------------------------------------------------------------
 define MENU_TIMEOUT     = 8000;
 define SCREEN_SAVER_MS  = 5000;
-define MAX_MODS         = 2;
+define MAX_MODS         = 3;
 define TGT_DEFAULT      = 8;
 define SH_DISABLED      = 11;
+define SWIPE_THRESHOLD  = 30;       // الحد الأدنى لاعتبار الحركة سحبة
 
 // LED Colors
 define LED_OFF    = 0;
@@ -79,6 +85,19 @@ int finesse_power     = 300;   // 50..1500 ms (مدة الضغط على زر ا�
 int finesse_shortcut  = 11;    // 0..10 = زر، 11 = Disabled
 int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut
 
+// Mod 4: Touchpad Swipes
+int mod_swipe         = 0;
+int touch_was_active  = FALSE;
+int touch_is_active   = FALSE;
+int touch_now_x       = 0;
+int touch_now_y       = 0;
+int swipe_start_x     = 0;
+int swipe_start_y     = 0;
+int swipe_last_x      = 0;
+int swipe_last_y      = 0;
+int swipe_dx          = 0;
+int swipe_dy          = 0;
+
 // Remap routing temp vars
 int o_l1, o_r1, o_l2, o_r2, o_cross, o_circle, o_square, o_triangle;
 int n_l1, n_r1, n_l2, n_r2, n_cross, n_circle, n_square, n_triangle;
@@ -114,6 +133,8 @@ const string STR_DISABLED   = "Disabled";
 const string STR_MOD_SPRINT  = "Sprint Control";
 const string STR_MOD_REMAP   = "Button Remap";
 const string STR_MOD_FINESSE = "Finesse Shot";
+const string STR_MOD_SWIPE   = "Touch Swipes";
+const string STR_SWIPE_INFO  = "4-Dir Skills";
 
 const string STR_PWR_LBL    = "Power:";
 const string STR_BTN_LBL    = "Btn:";
@@ -153,6 +174,7 @@ init {
     mod_finesse      = get_pvar(SPVAR_12, 0, 1,    0);
     finesse_power    = get_pvar(SPVAR_13, 50, 1500, 300);
     finesse_shortcut = get_pvar(SPVAR_14, 0, 11,   11);
+    mod_swipe        = get_pvar(SPVAR_15, 0, 1,    0);
 }
 
 //==============================================================================
@@ -261,6 +283,80 @@ function run_features() {
             set_val(PS4_SQUARE, 0);
         }
     }
+
+    if(mod_swipe) detect_swipes();
+}
+
+//==============================================================================
+//  TOUCHPAD SWIPES
+//==============================================================================
+function detect_swipes() {
+    touch_now_x = get_val(PS4_TOUCHX);
+    touch_now_y = get_val(PS4_TOUCHY);
+    touch_is_active = (touch_now_x != 0) || (touch_now_y != 0);
+
+    // بداية اللمس
+    if(touch_is_active && !touch_was_active) {
+        swipe_start_x = touch_now_x;
+        swipe_start_y = touch_now_y;
+    }
+
+    // أثناء اللمس: تحديث آخر موضع
+    if(touch_is_active) {
+        swipe_last_x = touch_now_x;
+        swipe_last_y = touch_now_y;
+    }
+
+    // نهاية اللمس: حساب اتجاه السحبة
+    if(!touch_is_active && touch_was_active) {
+        swipe_dx = swipe_last_x - swipe_start_x;
+        swipe_dy = swipe_last_y - swipe_start_y;
+
+        if(abs(swipe_dx) > abs(swipe_dy)) {
+            // أفقي
+            if(swipe_dx > SWIPE_THRESHOLD)       combo_run(SwipeRightCombo);
+            else if(swipe_dx < -SWIPE_THRESHOLD) combo_run(SwipeLeftCombo);
+        } else {
+            // عمودي
+            if(swipe_dy > SWIPE_THRESHOLD)       combo_run(SwipeDownCombo);
+            else if(swipe_dy < -SWIPE_THRESHOLD) combo_run(SwipeUpCombo);
+        }
+    }
+
+    touch_was_active = touch_is_active;
+}
+
+//------------------------------------------------------------------------------
+// SWIPE COMBOS (مهارات افتراضية)
+//------------------------------------------------------------------------------
+// Swipe Up = Rainbow Flick (لمس فوق)
+combo SwipeUpCombo {
+    set_val(PS4_RY, -100); wait(50);
+    set_val(PS4_RY, -100); wait(60);
+    set_val(PS4_RY,  100); wait(50);
+    set_val(PS4_RY,    0);
+}
+
+// Swipe Down = Drag Back (سحب الكرة للخلف)
+combo SwipeDownCombo {
+    set_val(PS4_R1, 100);
+    set_val(PS4_RY, 100); wait(150);
+    set_val(PS4_R1, 0);
+    set_val(PS4_RY, 0);
+}
+
+// Swipe Left = Reverse Elastico (من يمين لليسار)
+combo SwipeLeftCombo {
+    set_val(PS4_RX,  100); wait(60);
+    set_val(PS4_RX, -100); wait(60);
+    set_val(PS4_RX,    0);
+}
+
+// Swipe Right = Elastico (من يسار لليمين)
+combo SwipeRightCombo {
+    set_val(PS4_RX, -100); wait(60);
+    set_val(PS4_RX,  100); wait(60);
+    set_val(PS4_RX,    0);
 }
 
 //==============================================================================
@@ -493,6 +589,7 @@ function toggle_mod(val) {
     if(menu_idx == 0) mod_sprint = val;
     else if(menu_idx == 1) mod_remap = val;
     else if(menu_idx == 2) mod_finesse = val;
+    else if(menu_idx == 3) mod_swipe = val;
 }
 
 function clamp_val(v, mn, mx) {
@@ -517,6 +614,7 @@ function draw_menu() {
     if(menu_idx == 0) draw_sprint_menu();
     else if(menu_idx == 1) draw_remap_menu();
     else if(menu_idx == 2) draw_finesse_menu();
+    else if(menu_idx == 3) draw_swipe_menu();
 
     print(center_x(15, OLED_FONT_SMALL_WIDTH), 53,
           OLED_FONT_SMALL, OLED_WHITE, STR_HINT[0]);
@@ -595,6 +693,22 @@ function draw_finesse_menu() {
         print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
         print_shortcut_name(finesse_shortcut, 100, 40, OLED_FONT_SMALL);
     }
+}
+
+function draw_swipe_menu() {
+    print(center_x(12, OLED_FONT_SMALL_WIDTH), 4,
+          OLED_FONT_SMALL, OLED_WHITE, STR_MOD_SWIPE[0]);
+
+    if(mod_swipe > 0) {
+        print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
+              OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+    } else {
+        print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
+              OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+    }
+
+    print(center_x(12, OLED_FONT_SMALL_WIDTH), 40,
+          OLED_FONT_SMALL, OLED_WHITE, STR_SWIPE_INFO[0]);
 }
 
 function draw_btn_mapping(idx) {
@@ -724,4 +838,5 @@ function save_settings() {
     set_pvar(SPVAR_12, mod_finesse);
     set_pvar(SPVAR_13, finesse_power);
     set_pvar(SPVAR_14, finesse_shortcut);
+    set_pvar(SPVAR_15, mod_swipe);
 }
