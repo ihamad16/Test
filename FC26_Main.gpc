@@ -241,8 +241,8 @@ main {
         if(splash_timer == 0) {
             cls_oled(0);
             draw_frame();
-            print(center_x(12, OLED_FONT_MEDIUM_WIDTH), 10,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_TITLE[0]);
+            print(center_x(12, OLED_FONT_SMALL_WIDTH), 10,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_TITLE[0]);
             print(center_x(8, OLED_FONT_SMALL_WIDTH), 40,
                   OLED_FONT_SMALL, OLED_WHITE, STR_AUTHOR[0]);
             colourled(LED_BLUE);
@@ -259,12 +259,12 @@ main {
             cls_oled(0);
             if(script_on) {
                 colourled(LED_GREEN);
-                print(center_x(9, OLED_FONT_MEDIUM_WIDTH), 25,
-                      OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_ON[0]);
+                print(center_x(9, OLED_FONT_SMALL_WIDTH), 25,
+                      OLED_FONT_SMALL, OLED_WHITE, STR_SCRIPT_ON[0]);
             } else {
                 colourled(LED_RED);
-                print(center_x(10, OLED_FONT_MEDIUM_WIDTH), 25,
-                      OLED_FONT_MEDIUM, OLED_WHITE, STR_SCRIPT_OFF[0]);
+                print(center_x(10, OLED_FONT_SMALL_WIDTH), 25,
+                      OLED_FONT_SMALL, OLED_WHITE, STR_SCRIPT_OFF[0]);
             }
             set_val(PS4_PS, 0);
             saver_timer = 0;
@@ -280,8 +280,8 @@ main {
                 if(!menu_open) {
                     save_settings();
                     cls_oled(0);
-                    print(center_x(5, OLED_FONT_LARGE_WIDTH), 18,
-                          OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
+                    print(center_x(5, OLED_FONT_SMALL_WIDTH), 18,
+                          OLED_FONT_SMALL, OLED_WHITE, STR_SAVED[0]);
                     saver_timer = 0;
                     screen_saver = FALSE;
                 }
@@ -813,8 +813,8 @@ function handle_menu_input() {
             menu_open = FALSE;
             save_settings();
             cls_oled(0);
-            print(center_x(5, OLED_FONT_LARGE_WIDTH), 18,
-                  OLED_FONT_LARGE, OLED_WHITE, STR_SAVED[0]);
+            print(center_x(5, OLED_FONT_SMALL_WIDTH), 18,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_SAVED[0]);
             saver_timer = 0;
             screen_saver = FALSE;
         }
@@ -980,7 +980,6 @@ function clamp_val(v, mn, mx) {
 function draw_frame() {
     rect_oled(0, 0, OLED_WIDTH, 64, FALSE, 1);
     line_oled(1, 15, 127, 15, 1, 1);
-    line_oled(1, 48, 127, 48, 1, 1);
 }
 
 function draw_menu() {
@@ -993,9 +992,6 @@ function draw_menu() {
     else if(menu_idx == 3) draw_swipe_menu();
     else if(menu_idx == 4) draw_trivela_menu();
     else if(menu_idx == 5) draw_skills_menu();
-
-    print(center_x(15, OLED_FONT_SMALL_WIDTH), 53,
-          OLED_FONT_SMALL, OLED_WHITE, STR_HINT[0]);
 }
 
 function draw_sprint_menu() {
@@ -1006,11 +1002,11 @@ function draw_sprint_menu() {
         print_num_center(sprint_power, 22);
     } else {
         if(mod_sprint > 0) {
-            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+            print(center_x(7, OLED_FONT_SMALL_WIDTH), 22,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_ENABLED[0]);
         } else {
-            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+            print(center_x(8, OLED_FONT_SMALL_WIDTH), 22,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
         }
     }
 
@@ -1026,11 +1022,11 @@ function draw_remap_menu() {
         draw_btn_mapping(remap_btn_idx);
     } else {
         if(mod_remap > 0) {
-            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+            print(center_x(7, OLED_FONT_SMALL_WIDTH), 22,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_ENABLED[0]);
         } else {
-            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+            print(center_x(8, OLED_FONT_SMALL_WIDTH), 22,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
         }
     }
 
@@ -1060,11 +1056,11 @@ function draw_finesse_menu() {
         print_dbl_btn_name(finesse_dbl_btn, 58, 40, OLED_FONT_SMALL);
     } else {
         if(mod_finesse > 0) {
-            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 20,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+            print(center_x(7, OLED_FONT_SMALL_WIDTH), 20,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_ENABLED[0]);
         } else {
-            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 20,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+            print(center_x(8, OLED_FONT_SMALL_WIDTH), 20,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
         }
         // معلومات مختصرة
         print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
@@ -1092,11 +1088,11 @@ function draw_trivela_menu() {
         print_shortcut_name(trivela_shortcut, 60, 33, OLED_FONT_SMALL);
     } else {
         if(mod_trivela > 0) {
-            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+            print(center_x(7, OLED_FONT_SMALL_WIDTH), 22,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_ENABLED[0]);
         } else {
-            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+            print(center_x(8, OLED_FONT_SMALL_WIDTH), 22,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
         }
         print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
         print_num_at(trivela_power, 36, 40, OLED_FONT_SMALL);
@@ -1117,11 +1113,11 @@ function draw_skills_menu() {
         print_shortcut_name(get_skill_shortcut(skill_idx), 50, 33, OLED_FONT_SMALL);
     } else {
         if(mod_skills > 0) {
-            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+            print(center_x(7, OLED_FONT_SMALL_WIDTH), 22,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_ENABLED[0]);
         } else {
-            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
-                  OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+            print(center_x(8, OLED_FONT_SMALL_WIDTH), 22,
+                  OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
         }
     }
 
@@ -1135,11 +1131,11 @@ function draw_swipe_menu() {
           OLED_FONT_SMALL, OLED_WHITE, STR_MOD_SWIPE[0]);
 
     if(mod_swipe > 0) {
-        print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
-              OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+        print(center_x(7, OLED_FONT_SMALL_WIDTH), 22,
+              OLED_FONT_SMALL, OLED_WHITE, STR_ENABLED[0]);
     } else {
-        print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
-              OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+        print(center_x(8, OLED_FONT_SMALL_WIDTH), 22,
+              OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
     }
 
     print(center_x(12, OLED_FONT_SMALL_WIDTH), 40,
@@ -1222,7 +1218,7 @@ function print_num_at(val, x, y, font) {
 
 function print_num_center(val, y) {
     draw_digits = count_digits(val);
-    print_num_at(val, center_x(draw_digits, OLED_FONT_LARGE_WIDTH), y, OLED_FONT_LARGE);
+    print_num_at(val, center_x(draw_digits, OLED_FONT_SMALL_WIDTH), y, OLED_FONT_SMALL);
 }
 
 function count_digits(n) {
