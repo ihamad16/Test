@@ -25,7 +25,7 @@
 //  [2] Finesse Shot   → R1+SQUARE — Power + Shortcut
 //  [3] Trivela Shot   → L2+SQUARE — Power + Shortcut
 //  [4] Sprint Control → R2+L2 = جري بنسبة (10..100)
-//  [5] Skills         → McGeady L/R (Smart: تدوير حسب LS)
+//  [5] Skills         → McGeady L/R + Flair Nutmeg L/R (Smart: تدوير حسب LS)
 //
 //==============================================================================
 
@@ -44,7 +44,7 @@ define MAX_MODS         = 4;
 define TGT_DEFAULT      = 8;
 define SH_DISABLED      = 15;       // 0..10 = أزرار، 11..14 = سحبات، 15 = Off
 define SWIPE_THRESHOLD  = 30;       // الحد الأدنى لاعتبار الحركة سحبة
-define SKILLS_COUNT     = 2;
+define SKILLS_COUNT     = 4;
 define DBL_TAP_WINDOW   = 300;      // النافذة الزمنية للدبل تاب (ms)
 define DBL_OFF          = 11;       // 0..10 = زر، 11 = Off
 
@@ -95,11 +95,13 @@ int trivela_power     = 265;
 int trivela_shortcut  = 15;
 int trivela_opt_idx   = 0;
 
-// Mod 6: Skills — McGeady L/R (Smart Spin)
+// Mod 6: Skills — McGeady L/R + Flair Nutmeg L/R (Smart)
 int mod_skills        = 0;
-int skill_idx         = 0;     // 0..1 = المهارة المعروضة (McGeady L أو R)
+int skill_idx         = 0;     // 0..3 = المهارة المعروضة
 int sk_mcgeady_l      = 15;
 int sk_mcgeady_r      = 15;
+int sk_flair_nut_l    = 15;
+int sk_flair_nut_r    = 15;
 
 // Smart Spin: متغيرات اكتشاف اتجاه LS ودوران RS
 int ls_zone           = -1;    // -1 = neutral، 0 = active (قراءة continuous)
@@ -168,6 +170,8 @@ const string STR_DBL_LBL     = "Dbl:";
 // أسماء المهارات
 const string SK_MCGEADY_L    = "McGeady L";
 const string SK_MCGEADY_R    = "McGeady R";
+const string SK_FLAIR_NUT_L  = "Flair Nut L";
+const string SK_FLAIR_NUT_R  = "Flair Nut R";
 
 const string STR_PWR_LBL    = "Power:";
 const string STR_BTN_LBL    = "Btn:";
@@ -205,6 +209,8 @@ init {
         set_pvar(SPVAR_42, 11);  // finesse_dbl_btn = Off
         set_pvar(SPVAR_30, 15);  // sk_mcgeady_l = Off
         set_pvar(SPVAR_31, 15);  // sk_mcgeady_r = Off
+        set_pvar(SPVAR_32, 15);  // sk_flair_nut_l = Off
+        set_pvar(SPVAR_33, 15);  // sk_flair_nut_r = Off
         set_pvar(SPVAR_50, 42);  // علامة تم تهيئة الافتراضيات
     }
 
@@ -226,8 +232,10 @@ init {
     trivela_power    = get_pvar(SPVAR_17, 50, 1500, 265);
     trivela_shortcut = get_pvar(SPVAR_41, 0, 15,   15);
     mod_skills       = get_pvar(SPVAR_19, 0, 1,    0);
-    sk_mcgeady_l        = get_pvar(SPVAR_30, 0, 15,   15);
-    sk_mcgeady_r        = get_pvar(SPVAR_31, 0, 15,   15);
+    sk_mcgeady_l     = get_pvar(SPVAR_30, 0, 15,   15);
+    sk_mcgeady_r     = get_pvar(SPVAR_31, 0, 15,   15);
+    sk_flair_nut_l   = get_pvar(SPVAR_32, 0, 15,   15);
+    sk_flair_nut_r   = get_pvar(SPVAR_33, 0, 15,   15);
     finesse_dbl_btn  = get_pvar(SPVAR_42, 0, 11,   11);
 }
 
@@ -497,12 +505,48 @@ function fire_mcgeady_r() {
     }
 }
 
+// Flair Nutmeg: L1 + R1 + RS فليك يسار/يمين نسبي للاعب
+combo SkillFlairNutmegSmart {
+    set_val(PS4_L1, 100);
+    set_val(PS4_R1, 100);
+    set_val(PS4_RX, spin_step1_x);
+    set_val(PS4_RY, spin_step1_y);
+    wait(100);
+    set_val(PS4_L1, 0);
+    set_val(PS4_R1, 0);
+    set_val(PS4_RX, 0);
+    set_val(PS4_RY, 0);
+    wait(60);
+}
+
+function fire_flair_nut_l() {
+    detect_ls_zone();
+    if(ls_zone >= 0) {
+        transform_to_world(-100, 0);   // يسار نسبي للاعب
+        spin_step1_x = rot_world_x;
+        spin_step1_y = rot_world_y;
+        combo_run(SkillFlairNutmegSmart);
+    }
+}
+
+function fire_flair_nut_r() {
+    detect_ls_zone();
+    if(ls_zone >= 0) {
+        transform_to_world(100, 0);    // يمين نسبي للاعب
+        spin_step1_x = rot_world_x;
+        spin_step1_y = rot_world_y;
+        combo_run(SkillFlairNutmegSmart);
+    }
+}
+
 //==============================================================================
 //  SKILLS HANDLERS
 //==============================================================================
 function run_skills() {
     if(check_shortcut_press(sk_mcgeady_l)) fire_mcgeady_l();
     if(check_shortcut_press(sk_mcgeady_r)) fire_mcgeady_r();
+    if(check_shortcut_press(sk_flair_nut_l)) fire_flair_nut_l();
+    if(check_shortcut_press(sk_flair_nut_r)) fire_flair_nut_r();
 }
 
 function check_shortcut_press(sh_idx) {
@@ -526,20 +570,26 @@ function check_shortcut_press(sh_idx) {
 }
 
 function any_skill_uses_swipe() {
-    if(sk_mcgeady_l >= 11 && sk_mcgeady_l <= 14) return 1;
-    if(sk_mcgeady_r >= 11 && sk_mcgeady_r <= 14) return 1;
+    if(sk_mcgeady_l   >= 11 && sk_mcgeady_l   <= 14) return 1;
+    if(sk_mcgeady_r   >= 11 && sk_mcgeady_r   <= 14) return 1;
+    if(sk_flair_nut_l >= 11 && sk_flair_nut_l <= 14) return 1;
+    if(sk_flair_nut_r >= 11 && sk_flair_nut_r <= 14) return 1;
     return 0;
 }
 
 function get_skill_shortcut(idx) {
     if(idx == 0) return sk_mcgeady_l;
     if(idx == 1) return sk_mcgeady_r;
+    if(idx == 2) return sk_flair_nut_l;
+    if(idx == 3) return sk_flair_nut_r;
     return SH_DISABLED;
 }
 
 function set_skill_shortcut(idx, val) {
-    if(idx == 0)      sk_mcgeady_l = val;
-    else if(idx == 1) sk_mcgeady_r = val;
+    if(idx == 0)      sk_mcgeady_l   = val;
+    else if(idx == 1) sk_mcgeady_r   = val;
+    else if(idx == 2) sk_flair_nut_l = val;
+    else if(idx == 3) sk_flair_nut_r = val;
 }
 
 function cycle_skill_shortcut(idx, dir) {
@@ -552,6 +602,8 @@ function cycle_skill_shortcut(idx, dir) {
 function print_skill_name(idx, x, y, font) {
     if(idx == 0)      print(x, y, font, OLED_WHITE, SK_MCGEADY_L[0]);
     else if(idx == 1) print(x, y, font, OLED_WHITE, SK_MCGEADY_R[0]);
+    else if(idx == 2) print(x, y, font, OLED_WHITE, SK_FLAIR_NUT_L[0]);
+    else if(idx == 3) print(x, y, font, OLED_WHITE, SK_FLAIR_NUT_R[0]);
 }
 
 function check_trivela_shortcut() {
@@ -1202,5 +1254,7 @@ function save_settings() {
     set_pvar(SPVAR_19, mod_skills);
     set_pvar(SPVAR_30, sk_mcgeady_l);
     set_pvar(SPVAR_31, sk_mcgeady_r);
+    set_pvar(SPVAR_32, sk_flair_nut_l);
+    set_pvar(SPVAR_33, sk_flair_nut_r);
     set_pvar(SPVAR_42, finesse_dbl_btn);
 }
