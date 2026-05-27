@@ -1,5 +1,5 @@
 //==============================================================================
-//  FC 26 - Sprint + Full Button Remap v4.0
+//  FC 26 - Sprint + Remap + Finesse v5.0
 //  Author      : Hamad
 //  Platform    : PlayStation (PS4/PS5)
 //  Device      : Cronus Zen
@@ -16,12 +16,14 @@
 //  CIRCLE (O)      → خروج + حفظ
 //
 //  في وضع التعديل:
-//  Mod 1 (Sprint): ←/→ = ±10  |  ↑/↓ = ±1
-//  Mod 2 (Remap):  ↑/↓ = تغيير الزر  |  ←/→ = تغيير وظيفته
+//  Mod 1 (Sprint):  ←/→ = ±10  |  ↑/↓ = ±1
+//  Mod 2 (Remap):   ↑/↓ = تغيير الزر  |  ←/→ = تغيير وظيفته
+//  Mod 3 (Finesse): ↑/↓ = تبديل الخيار  |  ←/→ = تغيير القيمة
 //
 //  المودات:
-//  [1] Sprint Control → R2+L2 = جري بنسبة قابلة للضبط (10..100)
-//  [2] Button Remap   → كل زر يتحول لأي زر آخر (L1,R1,L2,R2,X,O,□,△)
+//  [1] Sprint Control → R2+L2 = جري بنسبة (10..100)
+//  [2] Button Remap   → كل زر يتحول لأي زر آخر
+//  [3] Finesse Shot   → Power + Shortcut button
 //
 //==============================================================================
 
@@ -36,9 +38,9 @@ define PaceCtrol    = PS4_L2;
 //------------------------------------------------------------------------------
 define MENU_TIMEOUT     = 8000;
 define SCREEN_SAVER_MS  = 5000;
-define MAX_MODS         = 1;
-define BTN_COUNT        = 8;
-define TGT_DEFAULT      = 8;       // قيمة "افتراضي" (الزر يبقى كما هو)
+define MAX_MODS         = 2;
+define TGT_DEFAULT      = 8;
+define SH_DISABLED      = 11;
 
 // LED Colors
 define LED_OFF    = 0;
@@ -60,7 +62,6 @@ int mod_sprint     = 1;
 int sprint_power   = 50;
 
 // Mod 2: Button Remap
-// أهداف كل زر: 0=L1, 1=R1, 2=L2, 3=R2, 4=Cross, 5=Circle, 6=Square, 7=Triangle, 8=Default
 int mod_remap      = 0;
 int tgt_l1         = 8;
 int tgt_r1         = 8;
@@ -70,11 +71,16 @@ int tgt_cross      = 8;
 int tgt_circle     = 8;
 int tgt_square     = 8;
 int tgt_triangle   = 8;
-int remap_btn_idx  = 0;       // الزر المعروض حالياً في القائمة (0..7)
+int remap_btn_idx  = 0;
 
-// Snapshot القيم الأصلية (داخل apply_remap)
+// Mod 3: Finesse Shot
+int mod_finesse       = 0;
+int finesse_power     = 30;    // 10..100 ms (مدة الضغطة)
+int finesse_shortcut  = 11;    // 0..10 = زر، 11 = Disabled
+int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut
+
+// Remap routing temp vars
 int o_l1, o_r1, o_l2, o_r2, o_cross, o_circle, o_square, o_triangle;
-// القيم الجديدة المحسوبة
 int n_l1, n_r1, n_l2, n_r2, n_cross, n_circle, n_square, n_triangle;
 int route_dest;
 int cycle_tmp;
@@ -105,13 +111,17 @@ const string STR_HINT       = "A/CROSS to Edit";
 const string STR_ENABLED    = "Enabled";
 const string STR_DISABLED   = "Disabled";
 
-const string STR_MOD_SPRINT = "Sprint Control";
-const string STR_MOD_REMAP  = "Button Remap";
+const string STR_MOD_SPRINT  = "Sprint Control";
+const string STR_MOD_REMAP   = "Button Remap";
+const string STR_MOD_FINESSE = "Finesse Shot";
 
 const string STR_PWR_LBL    = "Power:";
 const string STR_BTN_LBL    = "Btn:";
+const string STR_SH_LBL     = "Short:";
 const string STR_ARROW      = "->";
 const string STR_DEFAULT    = "Default";
+const string STR_OFF        = "Off";
+const string STR_CURSOR     = ">";
 
 const string BTN_L1   = "L1";
 const string BTN_R1   = "R1";
@@ -121,22 +131,28 @@ const string BTN_CR   = "Cross";
 const string BTN_CI   = "Circle";
 const string BTN_SQ   = "Square";
 const string BTN_TR   = "Triangle";
+const string BTN_L3   = "L3";
+const string BTN_R3   = "R3";
+const string BTN_TP   = "Touchpad";
 
 //------------------------------------------------------------------------------
 // INIT
 //------------------------------------------------------------------------------
 init {
-    mod_sprint    = get_pvar(SPVAR_1,  0, 1,    1);
-    sprint_power  = get_pvar(SPVAR_2,  10, 100, 50);
-    mod_remap     = get_pvar(SPVAR_3,  0, 1,    0);
-    tgt_l1        = get_pvar(SPVAR_4,  0, 8,    8);
-    tgt_r1        = get_pvar(SPVAR_5,  0, 8,    8);
-    tgt_l2        = get_pvar(SPVAR_6,  0, 8,    8);
-    tgt_r2        = get_pvar(SPVAR_7,  0, 8,    8);
-    tgt_cross     = get_pvar(SPVAR_8,  0, 8,    8);
-    tgt_circle    = get_pvar(SPVAR_9,  0, 8,    8);
-    tgt_square    = get_pvar(SPVAR_10, 0, 8,    8);
-    tgt_triangle  = get_pvar(SPVAR_11, 0, 8,    8);
+    mod_sprint       = get_pvar(SPVAR_1,  0, 1,    1);
+    sprint_power     = get_pvar(SPVAR_2,  10, 100, 50);
+    mod_remap        = get_pvar(SPVAR_3,  0, 1,    0);
+    tgt_l1           = get_pvar(SPVAR_4,  0, 8,    8);
+    tgt_r1           = get_pvar(SPVAR_5,  0, 8,    8);
+    tgt_l2           = get_pvar(SPVAR_6,  0, 8,    8);
+    tgt_r2           = get_pvar(SPVAR_7,  0, 8,    8);
+    tgt_cross        = get_pvar(SPVAR_8,  0, 8,    8);
+    tgt_circle       = get_pvar(SPVAR_9,  0, 8,    8);
+    tgt_square       = get_pvar(SPVAR_10, 0, 8,    8);
+    tgt_triangle     = get_pvar(SPVAR_11, 0, 8,    8);
+    mod_finesse      = get_pvar(SPVAR_12, 0, 1,    0);
+    finesse_power    = get_pvar(SPVAR_13, 10, 100, 30);
+    finesse_shortcut = get_pvar(SPVAR_14, 0, 11,   11);
 }
 
 //==============================================================================
@@ -160,7 +176,6 @@ main {
             colourled(LED_GREEN);
         }
     } else {
-        // KILL SWITCH (L2 + PS)
         if(get_val(PaceCtrol) && event_press(PS4_PS)) {
             script_on = !script_on;
             cls_oled(0);
@@ -179,7 +194,6 @@ main {
         }
 
         if(script_on) {
-            // فتح/إغلاق القائمة (L2 + OPTIONS)
             if(get_val(PaceCtrol) && event_press(PS4_OPTIONS)) {
                 menu_open = !menu_open;
                 edit_open = FALSE;
@@ -229,23 +243,51 @@ function run_features() {
         }
     }
 
-    // Button Remap لازم يتنفذ أول
     if(mod_remap) apply_remap();
 
-    // Sprint Control
     if(mod_sprint) {
         if(get_val(SprintBtn) > 0 && get_val(PaceCtrol) > 0) {
             set_val(SprintBtn, sprint_power);
             set_val(PaceCtrol, 0);
         }
     }
+
+    if(mod_finesse) {
+        if(check_finesse_shortcut()) combo_run(FinesseCombo);
+    }
+}
+
+//==============================================================================
+//  FINESSE SHOT
+//==============================================================================
+combo FinesseCombo {
+    set_val(PS4_R1, 100);
+    set_val(PS4_CROSS, 100);
+    wait(finesse_power);
+    set_val(PS4_R1, 0);
+    set_val(PS4_CROSS, 0);
+}
+
+function check_finesse_shortcut() {
+    if(finesse_shortcut == SH_DISABLED) return 0;
+    if(finesse_shortcut == 0  && event_press(PS4_L1))       return 1;
+    if(finesse_shortcut == 1  && event_press(PS4_R1))       return 1;
+    if(finesse_shortcut == 2  && event_press(PS4_L2))       return 1;
+    if(finesse_shortcut == 3  && event_press(PS4_R2))       return 1;
+    if(finesse_shortcut == 4  && event_press(PS4_CROSS))    return 1;
+    if(finesse_shortcut == 5  && event_press(PS4_CIRCLE))   return 1;
+    if(finesse_shortcut == 6  && event_press(PS4_SQUARE))   return 1;
+    if(finesse_shortcut == 7  && event_press(PS4_TRIANGLE)) return 1;
+    if(finesse_shortcut == 8  && event_press(PS4_L3))       return 1;
+    if(finesse_shortcut == 9  && event_press(PS4_R3))       return 1;
+    if(finesse_shortcut == 10 && event_press(PS4_TOUCH))    return 1;
+    return 0;
 }
 
 //==============================================================================
 //  BUTTON REMAP ENGINE
 //==============================================================================
 function apply_remap() {
-    // 1) snapshot القيم الأصلية
     o_l1       = get_val(PS4_L1);
     o_r1       = get_val(PS4_R1);
     o_l2       = get_val(PS4_L2);
@@ -255,11 +297,9 @@ function apply_remap() {
     o_square   = get_val(PS4_SQUARE);
     o_triangle = get_val(PS4_TRIANGLE);
 
-    // 2) reset القيم الجديدة
     n_l1 = 0; n_r1 = 0; n_l2 = 0; n_r2 = 0;
     n_cross = 0; n_circle = 0; n_square = 0; n_triangle = 0;
 
-    // 3) كل زر يوجه قيمته إلى هدفه
     route_value(o_l1,       tgt_l1,       0);
     route_value(o_r1,       tgt_r1,       1);
     route_value(o_l2,       tgt_l2,       2);
@@ -269,7 +309,6 @@ function apply_remap() {
     route_value(o_square,   tgt_square,   6);
     route_value(o_triangle, tgt_triangle, 7);
 
-    // 4) كتابة القيم النهائية
     set_val(PS4_L1,       n_l1);
     set_val(PS4_R1,       n_r1);
     set_val(PS4_L2,       n_l2);
@@ -280,7 +319,6 @@ function apply_remap() {
     set_val(PS4_TRIANGLE, n_triangle);
 }
 
-// orig_val = قيمة الزر  |  target = الهدف (0..8)  |  source_idx = رقم الزر المصدر (0..7)
 function route_value(orig_val, target, source_idx) {
     route_dest = target;
     if(route_dest == TGT_DEFAULT) route_dest = source_idx;
@@ -325,6 +363,12 @@ function cycle_target(idx, dir) {
     set_target_for_btn(idx, cycle_tmp);
 }
 
+function cycle_shortcut(dir) {
+    finesse_shortcut = finesse_shortcut + dir;
+    if(finesse_shortcut > SH_DISABLED) finesse_shortcut = 0;
+    if(finesse_shortcut < 0) finesse_shortcut = SH_DISABLED;
+}
+
 //==============================================================================
 //  MENU INPUT
 //==============================================================================
@@ -355,24 +399,20 @@ function handle_menu_input() {
         if(event_press(PS4_DOWN)) {
             menu_idx = menu_idx + 1;
             if(menu_idx > MAX_MODS) menu_idx = 0;
-            need_redraw = TRUE;
-            menu_timer = MENU_TIMEOUT;
+            need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_UP)) {
             menu_idx = menu_idx - 1;
             if(menu_idx < 0) menu_idx = MAX_MODS;
-            need_redraw = TRUE;
-            menu_timer = MENU_TIMEOUT;
+            need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_RIGHT)) {
             toggle_mod(1);
-            need_redraw = TRUE;
-            menu_timer = MENU_TIMEOUT;
+            need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
         }
         if(event_press(PS4_LEFT)) {
             toggle_mod(0);
-            need_redraw = TRUE;
-            menu_timer = MENU_TIMEOUT;
+            need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
         }
     } else {
         if(menu_idx == 0) {
@@ -413,6 +453,32 @@ function handle_menu_input() {
                 cycle_target(remap_btn_idx, -1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
+        } else if(menu_idx == 2) {
+            // Finesse: ↑/↓ يبدل الخيار، ←/→ يعدل القيمة
+            if(event_press(PS4_DOWN)) {
+                finesse_opt_idx = 1 - finesse_opt_idx;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_UP)) {
+                finesse_opt_idx = 1 - finesse_opt_idx;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_RIGHT)) {
+                if(finesse_opt_idx == 0) {
+                    finesse_power = clamp_val(finesse_power + 5, 10, 100);
+                } else {
+                    cycle_shortcut(1);
+                }
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_LEFT)) {
+                if(finesse_opt_idx == 0) {
+                    finesse_power = clamp_val(finesse_power - 5, 10, 100);
+                } else {
+                    cycle_shortcut(-1);
+                }
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
         }
     }
 }
@@ -420,6 +486,7 @@ function handle_menu_input() {
 function toggle_mod(val) {
     if(menu_idx == 0) mod_sprint = val;
     else if(menu_idx == 1) mod_remap = val;
+    else if(menu_idx == 2) mod_finesse = val;
 }
 
 function clamp_val(v, mn, mx) {
@@ -443,6 +510,7 @@ function draw_menu() {
 
     if(menu_idx == 0) draw_sprint_menu();
     else if(menu_idx == 1) draw_remap_menu();
+    else if(menu_idx == 2) draw_finesse_menu();
 
     print(center_x(15, OLED_FONT_SMALL_WIDTH), 53,
           OLED_FONT_SMALL, OLED_WHITE, STR_HINT[0]);
@@ -488,8 +556,42 @@ function draw_remap_menu() {
     print_num_at(remap_btn_idx + 1, 30, 40, OLED_FONT_SMALL);
 }
 
+function draw_finesse_menu() {
+    print(center_x(12, OLED_FONT_SMALL_WIDTH), 4,
+          OLED_FONT_SMALL, OLED_WHITE, STR_MOD_FINESSE[0]);
+
+    if(edit_open) {
+        // عرض الخيارين مع مؤشر >
+        // الخيار الأول: Power
+        if(finesse_opt_idx == 0) {
+            print(4, 20, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        }
+        print(14, 20, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
+        print_num_at(finesse_power, 60, 20, OLED_FONT_SMALL);
+
+        // الخيار الثاني: Shortcut
+        if(finesse_opt_idx == 1) {
+            print(4, 33, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        }
+        print(14, 33, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
+        print_shortcut_name(finesse_shortcut, 60, 33, OLED_FONT_SMALL);
+    } else {
+        if(mod_finesse > 0) {
+            print(center_x(7, OLED_FONT_MEDIUM_WIDTH), 22,
+                  OLED_FONT_MEDIUM, OLED_WHITE, STR_ENABLED[0]);
+        } else {
+            print(center_x(8, OLED_FONT_MEDIUM_WIDTH), 22,
+                  OLED_FONT_MEDIUM, OLED_WHITE, STR_DISABLED[0]);
+        }
+        // sub info: power والshortcut بشكل مختصر
+        print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
+        print_num_at(finesse_power, 36, 40, OLED_FONT_SMALL);
+        print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
+        print_shortcut_name(finesse_shortcut, 100, 40, OLED_FONT_SMALL);
+    }
+}
+
 function draw_btn_mapping(idx) {
-    // SOURCE -> TARGET
     print_btn_name(idx, 8, 22, OLED_FONT_SMALL);
     print(50, 22, OLED_FONT_SMALL, OLED_WHITE, STR_ARROW[0]);
 
@@ -510,6 +612,21 @@ function print_btn_name(idx, x, y, font) {
     else if(idx == 5) print(x, y, font, OLED_WHITE, BTN_CI[0]);
     else if(idx == 6) print(x, y, font, OLED_WHITE, BTN_SQ[0]);
     else if(idx == 7) print(x, y, font, OLED_WHITE, BTN_TR[0]);
+}
+
+function print_shortcut_name(idx, x, y, font) {
+    if(idx == 0) print(x, y, font, OLED_WHITE, BTN_L1[0]);
+    else if(idx == 1)  print(x, y, font, OLED_WHITE, BTN_R1[0]);
+    else if(idx == 2)  print(x, y, font, OLED_WHITE, BTN_L2[0]);
+    else if(idx == 3)  print(x, y, font, OLED_WHITE, BTN_R2[0]);
+    else if(idx == 4)  print(x, y, font, OLED_WHITE, BTN_CR[0]);
+    else if(idx == 5)  print(x, y, font, OLED_WHITE, BTN_CI[0]);
+    else if(idx == 6)  print(x, y, font, OLED_WHITE, BTN_SQ[0]);
+    else if(idx == 7)  print(x, y, font, OLED_WHITE, BTN_TR[0]);
+    else if(idx == 8)  print(x, y, font, OLED_WHITE, BTN_L3[0]);
+    else if(idx == 9)  print(x, y, font, OLED_WHITE, BTN_R3[0]);
+    else if(idx == 10) print(x, y, font, OLED_WHITE, BTN_TP[0]);
+    else if(idx == 11) print(x, y, font, OLED_WHITE, STR_OFF[0]);
 }
 
 //==============================================================================
@@ -598,4 +715,7 @@ function save_settings() {
     set_pvar(SPVAR_9,  tgt_circle);
     set_pvar(SPVAR_10, tgt_square);
     set_pvar(SPVAR_11, tgt_triangle);
+    set_pvar(SPVAR_12, mod_finesse);
+    set_pvar(SPVAR_13, finesse_power);
+    set_pvar(SPVAR_14, finesse_shortcut);
 }
