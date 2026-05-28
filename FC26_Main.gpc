@@ -99,9 +99,10 @@ int trivela_dbl_count  = 0;
 int trivela_opt_idx    = 0;    // 0=Power, 1=Short, 2=Dbl
 
 // Mod 6: Skills — McGeady L/R + Flair Nutmeg (مع Dbl-Tap لكل مهارة)
-// skill_idx 0..5: McG L Short(0), McG L Dbl(1), McG R Short(2), McG R Dbl(3), Flair Short(4), Flair Dbl(5)
+// skill_idx 0..2 = المهارة | skill_field 0=Short, 1=Dbl
 int mod_skills        = 0;
 int skill_idx         = 0;
+int skill_field       = 0;
 int sk_mcgeady_l      = 15;
 int sk_mcgeady_r      = 15;
 int sk_flair_nut      = 15;
@@ -596,35 +597,38 @@ function any_skill_uses_swipe() {
     return 0;
 }
 
-// skill_idx 0..5: McG L Short(0), McG L Dbl(1), McG R Short(2), McG R Dbl(3), Flair Short(4), Flair Dbl(5)
+// skill_idx 0..2 = المهارة | skill_field 0=Short, 1=Dbl
 function skill_real_idx() {
-    if(skill_idx <= 1) return 0;   // McGeady L
-    if(skill_idx <= 3) return 1;   // McGeady R
-    return 2;                      // Flair Nutmeg
+    return skill_idx;
 }
 
 function skill_field_is_dbl() {
-    if(skill_idx == 1 || skill_idx == 3 || skill_idx == 5) return 1;
-    return 0;
+    return skill_field;
 }
 
 function get_skill_field_value() {
-    if(skill_idx == 0) return sk_mcgeady_l;
-    if(skill_idx == 1) return sk_mcgeady_l_dbl;
-    if(skill_idx == 2) return sk_mcgeady_r;
-    if(skill_idx == 3) return sk_mcgeady_r_dbl;
-    if(skill_idx == 4) return sk_flair_nut;
-    if(skill_idx == 5) return sk_flair_nut_dbl;
+    if(skill_field == 0) {
+        if(skill_idx == 0) return sk_mcgeady_l;
+        if(skill_idx == 1) return sk_mcgeady_r;
+        if(skill_idx == 2) return sk_flair_nut;
+    } else {
+        if(skill_idx == 0) return sk_mcgeady_l_dbl;
+        if(skill_idx == 1) return sk_mcgeady_r_dbl;
+        if(skill_idx == 2) return sk_flair_nut_dbl;
+    }
     return 0;
 }
 
 function set_skill_field_value(val) {
-    if(skill_idx == 0)      sk_mcgeady_l     = val;
-    else if(skill_idx == 1) sk_mcgeady_l_dbl = val;
-    else if(skill_idx == 2) sk_mcgeady_r     = val;
-    else if(skill_idx == 3) sk_mcgeady_r_dbl = val;
-    else if(skill_idx == 4) sk_flair_nut     = val;
-    else if(skill_idx == 5) sk_flair_nut_dbl = val;
+    if(skill_field == 0) {
+        if(skill_idx == 0)      sk_mcgeady_l = val;
+        else if(skill_idx == 1) sk_mcgeady_r = val;
+        else if(skill_idx == 2) sk_flair_nut = val;
+    } else {
+        if(skill_idx == 0)      sk_mcgeady_l_dbl = val;
+        else if(skill_idx == 1) sk_mcgeady_r_dbl = val;
+        else if(skill_idx == 2) sk_flair_nut_dbl = val;
+    }
 }
 
 function cycle_skill_field(dir) {
@@ -1052,22 +1056,26 @@ function handle_menu_input() {
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 4) {
-            // Skills: ↑/↓ تتنقل عبر 6 مواقع (3 مهارات × 2 حقل Short/Dbl)
-            if(event_press(PS4_DOWN)) {
-                skill_idx = skill_idx + 1;
-                if(skill_idx > SKILLS_COUNT * 2 - 1) skill_idx = 0;
-                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
-            }
-            if(event_press(PS4_UP)) {
-                skill_idx = skill_idx - 1;
-                if(skill_idx < 0) skill_idx = SKILLS_COUNT * 2 - 1;
+            // Skills: ↑/↓ Short↔Dbl  |  ←/→ تنقل بين المهارات  |  L1/R1 تغيير قيمة
+            if(event_press(PS4_UP) || event_press(PS4_DOWN)) {
+                skill_field = 1 - skill_field;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_RIGHT)) {
-                cycle_skill_field(1);
+                skill_idx = skill_idx + 1;
+                if(skill_idx > SKILLS_COUNT - 1) skill_idx = 0;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_LEFT)) {
+                skill_idx = skill_idx - 1;
+                if(skill_idx < 0) skill_idx = SKILLS_COUNT - 1;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_R1)) {
+                cycle_skill_field(1);
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_L1)) {
                 cycle_skill_field(-1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
