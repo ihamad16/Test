@@ -535,12 +535,14 @@ function fire_mcgeady_r() {
 
 // Flair Nutmeg: L1+R1 → ضغطة SQUARE → R2+L2 للـ Cancel
 combo SkillFlairNutmegSmart {
-    // Step 1: L1 + R1 فقط (اللعبة تحدد الاتجاه من LS)
+    // Step 1: L1 + R1 + RS أمام (Up)
     set_val(PS4_L1, 100);
     set_val(PS4_R1, 100);
+    set_val(PS4_RY, -100);
     wait(100);
     set_val(PS4_L1, 0);
     set_val(PS4_R1, 0);
+    set_val(PS4_RY, 0);
     wait(200);
 
     // Step 2: SQUARE wind-up (يبدأ التسديدة)
