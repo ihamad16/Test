@@ -98,8 +98,8 @@ int trivela_dbl_timer  = 0;
 int trivela_dbl_count  = 0;
 int trivela_opt_idx    = 0;    // 0=Power, 1=Short, 2=Dbl
 
-// Mod 6: Skills — McGeady L/R + Flair Nutmeg (مع Dbl-Tap لكل مهارة)
-// skill_idx 0..2 = المهارة | skill_field 0=Short, 1=Dbl
+// Mod 6: Skills — McGeady L/R + Flair Nutmeg (مع Dbl-Tap + Chord لكل مهارة)
+// skill_idx 0..2 = المهارة | skill_field 0=Short, 1=Dbl, 2=ChordA, 3=ChordB
 int mod_skills        = 0;
 int skill_idx         = 0;
 int skill_field       = 0;
@@ -109,6 +109,12 @@ int sk_flair_nut      = 19;
 int sk_mcgeady_l_dbl  = 19;
 int sk_mcgeady_r_dbl  = 19;
 int sk_flair_nut_dbl  = 19;
+int sk_mcgeady_l_ca   = 19;
+int sk_mcgeady_l_cb   = 19;
+int sk_mcgeady_r_ca   = 19;
+int sk_mcgeady_r_cb   = 19;
+int sk_flair_nut_ca   = 19;
+int sk_flair_nut_cb   = 19;
 // Per-skill dbl-tap timer/count (نمط الفينس)
 int sk_mcg_l_dbl_timer = 0;
 int sk_mcg_l_dbl_count = 0;
@@ -180,6 +186,8 @@ const string STR_MOD_TRIVELA = "Trivela Shot";
 const string STR_MOD_SKILLS  = "Skills";
 const string STR_SK_LBL      = "Sk:";
 const string STR_DBL_LBL     = "Dbl:";
+const string STR_CA_LBL      = "ChdA:";
+const string STR_CB_LBL      = "ChdB:";
 
 // أسماء المهارات
 const string SK_MCGEADY_L    = "McGeady L";
@@ -220,7 +228,7 @@ const string BTN_DRG  = "D.Rg";
 init {
     // علم النسخة: SPVAR_50 لازم يساوي 42 إذا تم تهيئة الإعدادات الافتراضية مسبقاً.
     // لو لا، نكتب الـ shortcut defaults يدوياً (لأن Cronus يرجع 0 للـ PVAR غير المُهيّأ).
-    if(get_pvar(SPVAR_50, 0, 99, 0) != 45) {
+    if(get_pvar(SPVAR_50, 0, 99, 0) != 46) {
         set_pvar(SPVAR_40, 19);  // finesse_shortcut = Off
         set_pvar(SPVAR_41, 19);  // trivela_shortcut = Off
         set_pvar(SPVAR_42, 19);  // finesse_dbl_btn = Off
@@ -231,7 +239,13 @@ init {
         set_pvar(SPVAR_44, 19);  // sk_mcgeady_l_dbl = Off
         set_pvar(SPVAR_45, 19);  // sk_mcgeady_r_dbl = Off
         set_pvar(SPVAR_46, 19);  // sk_flair_nut_dbl = Off
-        set_pvar(SPVAR_50, 45);  // علامة تم تهيئة الافتراضيات
+        set_pvar(SPVAR_33, 19);  // sk_mcgeady_l_ca = Off
+        set_pvar(SPVAR_34, 19);  // sk_mcgeady_l_cb = Off
+        set_pvar(SPVAR_35, 19);  // sk_mcgeady_r_ca = Off
+        set_pvar(SPVAR_36, 19);  // sk_mcgeady_r_cb = Off
+        set_pvar(SPVAR_37, 19);  // sk_flair_nut_ca = Off
+        set_pvar(SPVAR_38, 19);  // sk_flair_nut_cb = Off
+        set_pvar(SPVAR_50, 46);  // علامة تم تهيئة الافتراضيات
     }
 
     mod_sprint       = get_pvar(SPVAR_1,  0, 1,    1);
@@ -260,6 +274,12 @@ init {
     sk_mcgeady_l_dbl = get_pvar(SPVAR_44, 0, 19,   19);
     sk_mcgeady_r_dbl = get_pvar(SPVAR_45, 0, 19,   19);
     sk_flair_nut_dbl = get_pvar(SPVAR_46, 0, 19,   19);
+    sk_mcgeady_l_ca  = get_pvar(SPVAR_33, 0, 19,   19);
+    sk_mcgeady_l_cb  = get_pvar(SPVAR_34, 0, 19,   19);
+    sk_mcgeady_r_ca  = get_pvar(SPVAR_35, 0, 19,   19);
+    sk_mcgeady_r_cb  = get_pvar(SPVAR_36, 0, 19,   19);
+    sk_flair_nut_ca  = get_pvar(SPVAR_37, 0, 19,   19);
+    sk_flair_nut_cb  = get_pvar(SPVAR_38, 0, 19,   19);
 }
 
 //==============================================================================
@@ -576,6 +596,11 @@ function run_skills() {
     if(check_sk_mcg_l_dbl_tap())   fire_mcgeady_l();
     if(check_sk_mcg_r_dbl_tap())   fire_mcgeady_r();
     if(check_sk_flair_dbl_tap())   fire_flair_nut();
+
+    // Chord (زرين معاً) لكل مهارة
+    if(check_chord(sk_mcgeady_l_ca, sk_mcgeady_l_cb)) fire_mcgeady_l();
+    if(check_chord(sk_mcgeady_r_ca, sk_mcgeady_r_cb)) fire_mcgeady_r();
+    if(check_chord(sk_flair_nut_ca, sk_flair_nut_cb)) fire_flair_nut();
 }
 
 function check_shortcut_press(sh_idx) {
@@ -626,10 +651,18 @@ function get_skill_field_value() {
         if(skill_idx == 0) return sk_mcgeady_l;
         if(skill_idx == 1) return sk_mcgeady_r;
         if(skill_idx == 2) return sk_flair_nut;
-    } else {
+    } else if(skill_field == 1) {
         if(skill_idx == 0) return sk_mcgeady_l_dbl;
         if(skill_idx == 1) return sk_mcgeady_r_dbl;
         if(skill_idx == 2) return sk_flair_nut_dbl;
+    } else if(skill_field == 2) {
+        if(skill_idx == 0) return sk_mcgeady_l_ca;
+        if(skill_idx == 1) return sk_mcgeady_r_ca;
+        if(skill_idx == 2) return sk_flair_nut_ca;
+    } else {
+        if(skill_idx == 0) return sk_mcgeady_l_cb;
+        if(skill_idx == 1) return sk_mcgeady_r_cb;
+        if(skill_idx == 2) return sk_flair_nut_cb;
     }
     return 0;
 }
@@ -639,21 +672,43 @@ function set_skill_field_value(val) {
         if(skill_idx == 0)      sk_mcgeady_l = val;
         else if(skill_idx == 1) sk_mcgeady_r = val;
         else if(skill_idx == 2) sk_flair_nut = val;
-    } else {
+    } else if(skill_field == 1) {
         if(skill_idx == 0)      sk_mcgeady_l_dbl = val;
         else if(skill_idx == 1) sk_mcgeady_r_dbl = val;
         else if(skill_idx == 2) sk_flair_nut_dbl = val;
+    } else if(skill_field == 2) {
+        if(skill_idx == 0)      sk_mcgeady_l_ca = val;
+        else if(skill_idx == 1) sk_mcgeady_r_ca = val;
+        else if(skill_idx == 2) sk_flair_nut_ca = val;
+    } else {
+        if(skill_idx == 0)      sk_mcgeady_l_cb = val;
+        else if(skill_idx == 1) sk_mcgeady_r_cb = val;
+        else if(skill_idx == 2) sk_flair_nut_cb = val;
     }
 }
 
-function cycle_skill_field(dir) {
-    cycle_tmp = get_skill_field_value() + dir;
-    if(skill_field_is_dbl()) {
-        if(cycle_tmp > DBL_OFF) cycle_tmp = 0;
-        if(cycle_tmp < 0) cycle_tmp = DBL_OFF;
+// Cycle بدون السحبات (11..14) — للـ Dbl و Chord
+function cycle_no_swipes(current, dir) {
+    cycle_tmp = current + dir;
+    if(dir > 0) {
+        if(cycle_tmp == 11) cycle_tmp = 15;
+        if(cycle_tmp > 19) cycle_tmp = 0;
     } else {
+        if(cycle_tmp == 14) cycle_tmp = 10;
+        if(cycle_tmp < 0) cycle_tmp = 19;
+    }
+    return cycle_tmp;
+}
+
+function cycle_skill_field(dir) {
+    if(skill_field == 0) {
+        // Short: شامل السحبات
+        cycle_tmp = get_skill_field_value() + dir;
         if(cycle_tmp > SH_DISABLED) cycle_tmp = 0;
         if(cycle_tmp < 0) cycle_tmp = SH_DISABLED;
+    } else {
+        // Dbl/ChordA/ChordB: تخطي السحبات
+        cycle_tmp = cycle_no_swipes(get_skill_field_value(), dir);
     }
     set_skill_field_value(cycle_tmp);
 }
@@ -798,15 +853,11 @@ function cycle_finesse_shortcut(dir) {
 }
 
 function cycle_finesse_dbl(dir) {
-    finesse_dbl_btn = finesse_dbl_btn + dir;
-    if(finesse_dbl_btn > DBL_OFF) finesse_dbl_btn = 0;
-    if(finesse_dbl_btn < 0) finesse_dbl_btn = DBL_OFF;
+    finesse_dbl_btn = cycle_no_swipes(finesse_dbl_btn, dir);
 }
 
 function cycle_trivela_dbl(dir) {
-    trivela_dbl_btn = trivela_dbl_btn + dir;
-    if(trivela_dbl_btn > DBL_OFF) trivela_dbl_btn = 0;
-    if(trivela_dbl_btn < 0) trivela_dbl_btn = DBL_OFF;
+    trivela_dbl_btn = cycle_no_swipes(trivela_dbl_btn, dir);
 }
 
 function cycle_skill_dbl(dir, current) {
@@ -814,6 +865,35 @@ function cycle_skill_dbl(dir, current) {
     if(cycle_tmp > DBL_OFF) cycle_tmp = 0;
     if(cycle_tmp < 0) cycle_tmp = DBL_OFF;
     return cycle_tmp;
+}
+
+// هل الزر/السهم مضغوط (مستمر، 0..18)؟ — للـ Chord
+function is_btn_held(btn) {
+    if(btn == 0  && get_val(PS4_L1) > 0)       return 1;
+    if(btn == 1  && get_val(PS4_R1) > 0)       return 1;
+    if(btn == 2  && get_val(PS4_L2) > 0)       return 1;
+    if(btn == 3  && get_val(PS4_R2) > 0)       return 1;
+    if(btn == 4  && get_val(PS4_CROSS) > 0)    return 1;
+    if(btn == 5  && get_val(PS4_CIRCLE) > 0)   return 1;
+    if(btn == 6  && get_val(PS4_SQUARE) > 0)   return 1;
+    if(btn == 7  && get_val(PS4_TRIANGLE) > 0) return 1;
+    if(btn == 8  && get_val(PS4_L3) > 0)       return 1;
+    if(btn == 9  && get_val(PS4_R3) > 0)       return 1;
+    if(btn == 10 && get_val(PS4_TOUCH) > 0)    return 1;
+    if(btn == 15 && get_val(PS4_UP) > 0)       return 1;
+    if(btn == 16 && get_val(PS4_DOWN) > 0)     return 1;
+    if(btn == 17 && get_val(PS4_LEFT) > 0)     return 1;
+    if(btn == 18 && get_val(PS4_RIGHT) > 0)    return 1;
+    return 0;
+}
+
+// كشف الـ Chord: ضغطة A أثناء حمل B (أو العكس)
+function check_chord(a, b) {
+    if(a >= DBL_OFF) return 0;
+    if(b >= DBL_OFF) return 0;
+    if(is_dbl_btn_pressed(a) && is_btn_held(b)) return 1;
+    if(is_dbl_btn_pressed(b) && is_btn_held(a)) return 1;
+    return 0;
 }
 
 // Helper: هل الزر/السحبة/السهم المختار ضُغط الآن؟ (0..18)
@@ -1106,8 +1186,14 @@ function handle_menu_input() {
                 if(skill_idx < 0) skill_idx = SKILLS_COUNT - 1;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
-            if(event_press(PS4_UP) || event_press(PS4_DOWN)) {
-                skill_field = 1 - skill_field;
+            if(event_press(PS4_DOWN)) {
+                skill_field = skill_field + 1;
+                if(skill_field > 3) skill_field = 0;
+                need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
+            }
+            if(event_press(PS4_UP)) {
+                skill_field = skill_field - 1;
+                if(skill_field < 0) skill_field = 3;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_RIGHT)) {
@@ -1271,18 +1357,33 @@ function draw_skills_menu() {
         // اسم المهارة في السطر الأول
         print_skill_name(skill_real_idx(), 10, 18, OLED_FONT_SMALL);
 
-        // Short و Dbl، المؤشر > على المختار
-        if(!skill_field_is_dbl()) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
-        print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
-        if(skill_real_idx() == 0)      print_shortcut_name(sk_mcgeady_l, 58, 29, OLED_FONT_SMALL);
-        else if(skill_real_idx() == 1) print_shortcut_name(sk_mcgeady_r, 58, 29, OLED_FONT_SMALL);
-        else                           print_shortcut_name(sk_flair_nut, 58, 29, OLED_FONT_SMALL);
+        if(skill_field <= 1) {
+            // عرض Short + Dbl
+            if(skill_field == 0) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+            print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
+            if(skill_idx == 0)      print_shortcut_name(sk_mcgeady_l, 58, 29, OLED_FONT_SMALL);
+            else if(skill_idx == 1) print_shortcut_name(sk_mcgeady_r, 58, 29, OLED_FONT_SMALL);
+            else                    print_shortcut_name(sk_flair_nut, 58, 29, OLED_FONT_SMALL);
 
-        if(skill_field_is_dbl())  print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
-        print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_DBL_LBL[0]);
-        if(skill_real_idx() == 0)      print_dbl_btn_name(sk_mcgeady_l_dbl, 58, 40, OLED_FONT_SMALL);
-        else if(skill_real_idx() == 1) print_dbl_btn_name(sk_mcgeady_r_dbl, 58, 40, OLED_FONT_SMALL);
-        else                           print_dbl_btn_name(sk_flair_nut_dbl, 58, 40, OLED_FONT_SMALL);
+            if(skill_field == 1) print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+            print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_DBL_LBL[0]);
+            if(skill_idx == 0)      print_dbl_btn_name(sk_mcgeady_l_dbl, 58, 40, OLED_FONT_SMALL);
+            else if(skill_idx == 1) print_dbl_btn_name(sk_mcgeady_r_dbl, 58, 40, OLED_FONT_SMALL);
+            else                    print_dbl_btn_name(sk_flair_nut_dbl, 58, 40, OLED_FONT_SMALL);
+        } else {
+            // عرض ChordA + ChordB
+            if(skill_field == 2) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+            print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CA_LBL[0]);
+            if(skill_idx == 0)      print_dbl_btn_name(sk_mcgeady_l_ca, 58, 29, OLED_FONT_SMALL);
+            else if(skill_idx == 1) print_dbl_btn_name(sk_mcgeady_r_ca, 58, 29, OLED_FONT_SMALL);
+            else                    print_dbl_btn_name(sk_flair_nut_ca, 58, 29, OLED_FONT_SMALL);
+
+            if(skill_field == 3) print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+            print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CB_LBL[0]);
+            if(skill_idx == 0)      print_dbl_btn_name(sk_mcgeady_l_cb, 58, 40, OLED_FONT_SMALL);
+            else if(skill_idx == 1) print_dbl_btn_name(sk_mcgeady_r_cb, 58, 40, OLED_FONT_SMALL);
+            else                    print_dbl_btn_name(sk_flair_nut_cb, 58, 40, OLED_FONT_SMALL);
+        }
     } else {
         if(mod_skills > 0) {
             print(center_x(7, OLED_FONT_SMALL_WIDTH), 30,
@@ -1441,4 +1542,10 @@ function save_settings() {
     set_pvar(SPVAR_44, sk_mcgeady_l_dbl);
     set_pvar(SPVAR_45, sk_mcgeady_r_dbl);
     set_pvar(SPVAR_46, sk_flair_nut_dbl);
+    set_pvar(SPVAR_33, sk_mcgeady_l_ca);
+    set_pvar(SPVAR_34, sk_mcgeady_l_cb);
+    set_pvar(SPVAR_35, sk_mcgeady_r_ca);
+    set_pvar(SPVAR_36, sk_mcgeady_r_cb);
+    set_pvar(SPVAR_37, sk_flair_nut_ca);
+    set_pvar(SPVAR_38, sk_flair_nut_cb);
 }
