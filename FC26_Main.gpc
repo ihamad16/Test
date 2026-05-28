@@ -90,17 +90,31 @@ int dbl_was_pressed   = 0;     // temp للكشف
 int finesse_opt_idx   = 0;     // 0=Power, 1=Shortcut, 2=Dbl-Tap
 
 // Mod 5: Trivela Shot (L2 + SQUARE) — نفس الفينس بس بـ L2
-int mod_trivela       = 0;
-int trivela_power     = 265;
-int trivela_shortcut  = 15;
-int trivela_opt_idx   = 0;
+int mod_trivela        = 0;
+int trivela_power      = 265;
+int trivela_shortcut   = 15;
+int trivela_dbl_btn    = 11;   // 0..10 = زر للدبل تاب، 11 = Off
+int trivela_dbl_timer  = 0;
+int trivela_dbl_count  = 0;
+int trivela_opt_idx    = 0;    // 0=Power, 1=Short, 2=Dbl
 
-// Mod 6: Skills — McGeady L/R + Flair Nutmeg (Smart)
+// Mod 6: Skills — McGeady L/R + Flair Nutmeg (مع Dbl-Tap لكل مهارة)
+// skill_idx 0..5: McG L Short(0), McG L Dbl(1), McG R Short(2), McG R Dbl(3), Flair Short(4), Flair Dbl(5)
 int mod_skills        = 0;
-int skill_idx         = 0;     // 0..2 = المهارة المعروضة
+int skill_idx         = 0;
 int sk_mcgeady_l      = 15;
 int sk_mcgeady_r      = 15;
 int sk_flair_nut      = 15;
+int sk_mcgeady_l_dbl  = 11;
+int sk_mcgeady_r_dbl  = 11;
+int sk_flair_nut_dbl  = 11;
+// Per-skill dbl-tap timer/count (نمط الفينس)
+int sk_mcg_l_dbl_timer = 0;
+int sk_mcg_l_dbl_count = 0;
+int sk_mcg_r_dbl_timer = 0;
+int sk_mcg_r_dbl_count = 0;
+int sk_flair_dbl_timer = 0;
+int sk_flair_dbl_count = 0;
 
 // Smart Spin: متغيرات اكتشاف اتجاه LS ودوران RS
 int ls_zone           = -1;    // -1 = neutral، 0 = active (قراءة continuous)
@@ -201,14 +215,18 @@ const string BTN_SWRG = "Sw.Rg";
 init {
     // علم النسخة: SPVAR_50 لازم يساوي 42 إذا تم تهيئة الإعدادات الافتراضية مسبقاً.
     // لو لا، نكتب الـ shortcut defaults يدوياً (لأن Cronus يرجع 0 للـ PVAR غير المُهيّأ).
-    if(get_pvar(SPVAR_50, 0, 99, 0) != 43) {
+    if(get_pvar(SPVAR_50, 0, 99, 0) != 44) {
         set_pvar(SPVAR_40, 15);  // finesse_shortcut = Off
         set_pvar(SPVAR_41, 15);  // trivela_shortcut = Off
         set_pvar(SPVAR_42, 11);  // finesse_dbl_btn = Off
         set_pvar(SPVAR_30, 15);  // sk_mcgeady_l = Off
         set_pvar(SPVAR_31, 15);  // sk_mcgeady_r = Off
         set_pvar(SPVAR_32, 15);  // sk_flair_nut = Off
-        set_pvar(SPVAR_50, 43);  // علامة تم تهيئة الافتراضيات
+        set_pvar(SPVAR_43, 11);  // trivela_dbl_btn = Off
+        set_pvar(SPVAR_44, 11);  // sk_mcgeady_l_dbl = Off
+        set_pvar(SPVAR_45, 11);  // sk_mcgeady_r_dbl = Off
+        set_pvar(SPVAR_46, 11);  // sk_flair_nut_dbl = Off
+        set_pvar(SPVAR_50, 44);  // علامة تم تهيئة الافتراضيات
     }
 
     mod_sprint       = get_pvar(SPVAR_1,  0, 1,    1);
@@ -233,6 +251,10 @@ init {
     sk_mcgeady_r     = get_pvar(SPVAR_31, 0, 15,   15);
     sk_flair_nut     = get_pvar(SPVAR_32, 0, 15,   15);
     finesse_dbl_btn  = get_pvar(SPVAR_42, 0, 11,   11);
+    trivela_dbl_btn  = get_pvar(SPVAR_43, 0, 11,   11);
+    sk_mcgeady_l_dbl = get_pvar(SPVAR_44, 0, 11,   11);
+    sk_mcgeady_r_dbl = get_pvar(SPVAR_45, 0, 11,   11);
+    sk_flair_nut_dbl = get_pvar(SPVAR_46, 0, 11,   11);
 }
 
 //==============================================================================
@@ -355,6 +377,9 @@ function run_features() {
     if(mod_trivela) {
         // الترافيلا يستهلك السحبة إن كانت اختصاره
         if(check_trivela_shortcut()) combo_run(TrivelaCombo);
+
+        // دبل تاب لزر معين
+        if(check_trivela_dbl_tap()) combo_run(TrivelaCombo);
 
         // Cap على SQUARE (مع L2)
         if(get_val(PS4_L2) && get_val(PS4_SQUARE) && get_ptime(PS4_SQUARE) >= trivela_power) {
@@ -537,6 +562,11 @@ function run_skills() {
     if(check_shortcut_press(sk_mcgeady_l)) fire_mcgeady_l();
     if(check_shortcut_press(sk_mcgeady_r)) fire_mcgeady_r();
     if(check_shortcut_press(sk_flair_nut)) fire_flair_nut();
+
+    // Dbl-Tap لكل مهارة (نمط الفينس)
+    if(check_sk_mcg_l_dbl_tap())   fire_mcgeady_l();
+    if(check_sk_mcg_r_dbl_tap())   fire_mcgeady_r();
+    if(check_sk_flair_dbl_tap())   fire_flair_nut();
 }
 
 function check_shortcut_press(sh_idx) {
@@ -566,24 +596,47 @@ function any_skill_uses_swipe() {
     return 0;
 }
 
-function get_skill_shortcut(idx) {
-    if(idx == 0) return sk_mcgeady_l;
-    if(idx == 1) return sk_mcgeady_r;
-    if(idx == 2) return sk_flair_nut;
-    return SH_DISABLED;
+// skill_idx 0..5: McG L Short(0), McG L Dbl(1), McG R Short(2), McG R Dbl(3), Flair Short(4), Flair Dbl(5)
+function skill_real_idx() {
+    if(skill_idx <= 1) return 0;   // McGeady L
+    if(skill_idx <= 3) return 1;   // McGeady R
+    return 2;                      // Flair Nutmeg
 }
 
-function set_skill_shortcut(idx, val) {
-    if(idx == 0)      sk_mcgeady_l = val;
-    else if(idx == 1) sk_mcgeady_r = val;
-    else if(idx == 2) sk_flair_nut = val;
+function skill_field_is_dbl() {
+    if(skill_idx == 1 || skill_idx == 3 || skill_idx == 5) return 1;
+    return 0;
 }
 
-function cycle_skill_shortcut(idx, dir) {
-    cycle_tmp = get_skill_shortcut(idx) + dir;
-    if(cycle_tmp > SH_DISABLED) cycle_tmp = 0;
-    if(cycle_tmp < 0) cycle_tmp = SH_DISABLED;
-    set_skill_shortcut(idx, cycle_tmp);
+function get_skill_field_value() {
+    if(skill_idx == 0) return sk_mcgeady_l;
+    if(skill_idx == 1) return sk_mcgeady_l_dbl;
+    if(skill_idx == 2) return sk_mcgeady_r;
+    if(skill_idx == 3) return sk_mcgeady_r_dbl;
+    if(skill_idx == 4) return sk_flair_nut;
+    if(skill_idx == 5) return sk_flair_nut_dbl;
+    return 0;
+}
+
+function set_skill_field_value(val) {
+    if(skill_idx == 0)      sk_mcgeady_l     = val;
+    else if(skill_idx == 1) sk_mcgeady_l_dbl = val;
+    else if(skill_idx == 2) sk_mcgeady_r     = val;
+    else if(skill_idx == 3) sk_mcgeady_r_dbl = val;
+    else if(skill_idx == 4) sk_flair_nut     = val;
+    else if(skill_idx == 5) sk_flair_nut_dbl = val;
+}
+
+function cycle_skill_field(dir) {
+    cycle_tmp = get_skill_field_value() + dir;
+    if(skill_field_is_dbl()) {
+        if(cycle_tmp > DBL_OFF) cycle_tmp = 0;
+        if(cycle_tmp < 0) cycle_tmp = DBL_OFF;
+    } else {
+        if(cycle_tmp > SH_DISABLED) cycle_tmp = 0;
+        if(cycle_tmp < 0) cycle_tmp = SH_DISABLED;
+    }
+    set_skill_field_value(cycle_tmp);
 }
 
 function print_skill_name(idx, x, y, font) {
@@ -724,33 +777,43 @@ function cycle_finesse_dbl(dir) {
     if(finesse_dbl_btn < 0) finesse_dbl_btn = DBL_OFF;
 }
 
-// كشف الدبل تاب: ضغطتان متتاليتان على الزر المختار خلال DBL_TAP_WINDOW ms
+function cycle_trivela_dbl(dir) {
+    trivela_dbl_btn = trivela_dbl_btn + dir;
+    if(trivela_dbl_btn > DBL_OFF) trivela_dbl_btn = 0;
+    if(trivela_dbl_btn < 0) trivela_dbl_btn = DBL_OFF;
+}
+
+function cycle_skill_dbl(dir, current) {
+    cycle_tmp = current + dir;
+    if(cycle_tmp > DBL_OFF) cycle_tmp = 0;
+    if(cycle_tmp < 0) cycle_tmp = DBL_OFF;
+    return cycle_tmp;
+}
+
+// Helper: هل الزر المختار (0..10) ضُغط الآن؟
+function is_dbl_btn_pressed(btn) {
+    if(btn == 0  && event_press(PS4_L1))       return 1;
+    if(btn == 1  && event_press(PS4_R1))       return 1;
+    if(btn == 2  && event_press(PS4_L2))       return 1;
+    if(btn == 3  && event_press(PS4_R2))       return 1;
+    if(btn == 4  && event_press(PS4_CROSS))    return 1;
+    if(btn == 5  && event_press(PS4_CIRCLE))   return 1;
+    if(btn == 6  && event_press(PS4_SQUARE))   return 1;
+    if(btn == 7  && event_press(PS4_TRIANGLE)) return 1;
+    if(btn == 8  && event_press(PS4_L3))       return 1;
+    if(btn == 9  && event_press(PS4_R3))       return 1;
+    if(btn == 10 && event_press(PS4_TOUCH))    return 1;
+    return 0;
+}
+
+// كشف الدبل تاب للفينس: نمط مرجعي
 function check_finesse_dbl_tap() {
     if(finesse_dbl_btn == DBL_OFF) return 0;
-
-    // تنازل العداد
     if(finesse_dbl_timer > 0) {
         finesse_dbl_timer = finesse_dbl_timer - get_rtime();
-        if(finesse_dbl_timer <= 0) {
-            finesse_dbl_count = 0;
-        }
+        if(finesse_dbl_timer <= 0) finesse_dbl_count = 0;
     }
-
-    // هل الزر المختار تم ضغطه الآن؟
-    dbl_was_pressed = 0;
-    if(finesse_dbl_btn == 0  && event_press(PS4_L1))       dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 1  && event_press(PS4_R1))       dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 2  && event_press(PS4_L2))       dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 3  && event_press(PS4_R2))       dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 4  && event_press(PS4_CROSS))    dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 5  && event_press(PS4_CIRCLE))   dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 6  && event_press(PS4_SQUARE))   dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 7  && event_press(PS4_TRIANGLE)) dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 8  && event_press(PS4_L3))       dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 9  && event_press(PS4_R3))       dbl_was_pressed = 1;
-    if(finesse_dbl_btn == 10 && event_press(PS4_TOUCH))    dbl_was_pressed = 1;
-
-    if(dbl_was_pressed) {
+    if(is_dbl_btn_pressed(finesse_dbl_btn)) {
         finesse_dbl_count = finesse_dbl_count + 1;
         if(finesse_dbl_count >= 2) {
             finesse_dbl_count = 0;
@@ -758,6 +821,78 @@ function check_finesse_dbl_tap() {
             return 1;
         }
         finesse_dbl_timer = DBL_TAP_WINDOW;
+    }
+    return 0;
+}
+
+function check_trivela_dbl_tap() {
+    if(trivela_dbl_btn == DBL_OFF) return 0;
+    if(trivela_dbl_timer > 0) {
+        trivela_dbl_timer = trivela_dbl_timer - get_rtime();
+        if(trivela_dbl_timer <= 0) trivela_dbl_count = 0;
+    }
+    if(is_dbl_btn_pressed(trivela_dbl_btn)) {
+        trivela_dbl_count = trivela_dbl_count + 1;
+        if(trivela_dbl_count >= 2) {
+            trivela_dbl_count = 0;
+            trivela_dbl_timer = 0;
+            return 1;
+        }
+        trivela_dbl_timer = DBL_TAP_WINDOW;
+    }
+    return 0;
+}
+
+function check_sk_mcg_l_dbl_tap() {
+    if(sk_mcgeady_l_dbl == DBL_OFF) return 0;
+    if(sk_mcg_l_dbl_timer > 0) {
+        sk_mcg_l_dbl_timer = sk_mcg_l_dbl_timer - get_rtime();
+        if(sk_mcg_l_dbl_timer <= 0) sk_mcg_l_dbl_count = 0;
+    }
+    if(is_dbl_btn_pressed(sk_mcgeady_l_dbl)) {
+        sk_mcg_l_dbl_count = sk_mcg_l_dbl_count + 1;
+        if(sk_mcg_l_dbl_count >= 2) {
+            sk_mcg_l_dbl_count = 0;
+            sk_mcg_l_dbl_timer = 0;
+            return 1;
+        }
+        sk_mcg_l_dbl_timer = DBL_TAP_WINDOW;
+    }
+    return 0;
+}
+
+function check_sk_mcg_r_dbl_tap() {
+    if(sk_mcgeady_r_dbl == DBL_OFF) return 0;
+    if(sk_mcg_r_dbl_timer > 0) {
+        sk_mcg_r_dbl_timer = sk_mcg_r_dbl_timer - get_rtime();
+        if(sk_mcg_r_dbl_timer <= 0) sk_mcg_r_dbl_count = 0;
+    }
+    if(is_dbl_btn_pressed(sk_mcgeady_r_dbl)) {
+        sk_mcg_r_dbl_count = sk_mcg_r_dbl_count + 1;
+        if(sk_mcg_r_dbl_count >= 2) {
+            sk_mcg_r_dbl_count = 0;
+            sk_mcg_r_dbl_timer = 0;
+            return 1;
+        }
+        sk_mcg_r_dbl_timer = DBL_TAP_WINDOW;
+    }
+    return 0;
+}
+
+function check_sk_flair_dbl_tap() {
+    if(sk_flair_nut_dbl == DBL_OFF) return 0;
+    if(sk_flair_dbl_timer > 0) {
+        sk_flair_dbl_timer = sk_flair_dbl_timer - get_rtime();
+        if(sk_flair_dbl_timer <= 0) sk_flair_dbl_count = 0;
+    }
+    if(is_dbl_btn_pressed(sk_flair_nut_dbl)) {
+        sk_flair_dbl_count = sk_flair_dbl_count + 1;
+        if(sk_flair_dbl_count >= 2) {
+            sk_flair_dbl_count = 0;
+            sk_flair_dbl_timer = 0;
+            return 1;
+        }
+        sk_flair_dbl_timer = DBL_TAP_WINDOW;
     }
     return 0;
 }
@@ -875,29 +1010,27 @@ function handle_menu_input() {
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 2) {
-            // Trivela: نفس الفينس
+            // Trivela: 3 خيارات مثل الفينس (Power, Short, Dbl)
             if(event_press(PS4_DOWN)) {
-                trivela_opt_idx = 1 - trivela_opt_idx;
+                trivela_opt_idx = trivela_opt_idx + 1;
+                if(trivela_opt_idx > 2) trivela_opt_idx = 0;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_UP)) {
-                trivela_opt_idx = 1 - trivela_opt_idx;
+                trivela_opt_idx = trivela_opt_idx - 1;
+                if(trivela_opt_idx < 0) trivela_opt_idx = 2;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_RIGHT)) {
-                if(trivela_opt_idx == 0) {
-                    trivela_power = clamp_val(trivela_power + 5, 50, 1500);
-                } else {
-                    cycle_trivela_shortcut(1);
-                }
+                if(trivela_opt_idx == 0)      trivela_power = clamp_val(trivela_power + 5, 50, 1500);
+                else if(trivela_opt_idx == 1) cycle_trivela_shortcut(1);
+                else                          cycle_trivela_dbl(1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_LEFT)) {
-                if(trivela_opt_idx == 0) {
-                    trivela_power = clamp_val(trivela_power - 5, 50, 1500);
-                } else {
-                    cycle_trivela_shortcut(-1);
-                }
+                if(trivela_opt_idx == 0)      trivela_power = clamp_val(trivela_power - 5, 50, 1500);
+                else if(trivela_opt_idx == 1) cycle_trivela_shortcut(-1);
+                else                          cycle_trivela_dbl(-1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 3) {
@@ -919,23 +1052,23 @@ function handle_menu_input() {
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 4) {
-            // Skills: ↑/↓ تبدل المهارة، ←/→ تغير اختصارها
+            // Skills: ↑/↓ تتنقل عبر 6 مواقع (3 مهارات × 2 حقل Short/Dbl)
             if(event_press(PS4_DOWN)) {
                 skill_idx = skill_idx + 1;
-                if(skill_idx > SKILLS_COUNT - 1) skill_idx = 0;
+                if(skill_idx > SKILLS_COUNT * 2 - 1) skill_idx = 0;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_UP)) {
                 skill_idx = skill_idx - 1;
-                if(skill_idx < 0) skill_idx = SKILLS_COUNT - 1;
+                if(skill_idx < 0) skill_idx = SKILLS_COUNT * 2 - 1;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_RIGHT)) {
-                cycle_skill_shortcut(skill_idx, 1);
+                cycle_skill_field(1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_LEFT)) {
-                cycle_skill_shortcut(skill_idx, -1);
+                cycle_skill_field(-1);
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         }
@@ -1056,29 +1189,30 @@ function draw_trivela_menu() {
           OLED_FONT_SMALL, OLED_WHITE, STR_MOD_TRIVELA[0]);
 
     if(edit_open) {
-        if(trivela_opt_idx == 0) {
-            print(4, 20, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
-        }
-        print(14, 20, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
-        print_num_at(trivela_power, 60, 20, OLED_FONT_SMALL);
+        // 3 خيارات مع مؤشر >
+        if(trivela_opt_idx == 0) print(2, 18, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        print(12, 18, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
+        print_num_at(trivela_power, 58, 18, OLED_FONT_SMALL);
 
-        if(trivela_opt_idx == 1) {
-            print(4, 33, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
-        }
-        print(14, 33, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
-        print_shortcut_name(trivela_shortcut, 60, 33, OLED_FONT_SMALL);
+        if(trivela_opt_idx == 1) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
+        print_shortcut_name(trivela_shortcut, 58, 29, OLED_FONT_SMALL);
+
+        if(trivela_opt_idx == 2) print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_DBL_LBL[0]);
+        print_dbl_btn_name(trivela_dbl_btn, 58, 40, OLED_FONT_SMALL);
     } else {
         if(mod_trivela > 0) {
-            print(center_x(7, OLED_FONT_SMALL_WIDTH), 22,
+            print(center_x(7, OLED_FONT_SMALL_WIDTH), 20,
                   OLED_FONT_SMALL, OLED_WHITE, STR_ENABLED[0]);
         } else {
-            print(center_x(8, OLED_FONT_SMALL_WIDTH), 22,
+            print(center_x(8, OLED_FONT_SMALL_WIDTH), 20,
                   OLED_FONT_SMALL, OLED_WHITE, STR_DISABLED[0]);
         }
         print(4, 40, OLED_FONT_SMALL, OLED_WHITE, STR_PWR_LBL[0]);
         print_num_at(trivela_power, 36, 40, OLED_FONT_SMALL);
-        print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
-        print_shortcut_name(trivela_shortcut, 100, 40, OLED_FONT_SMALL);
+        print(70, 40, OLED_FONT_SMALL, OLED_WHITE, STR_DBL_LBL[0]);
+        print_dbl_btn_name(trivela_dbl_btn, 95, 40, OLED_FONT_SMALL);
     }
 }
 
@@ -1087,11 +1221,21 @@ function draw_skills_menu() {
           OLED_FONT_SMALL, OLED_WHITE, STR_MOD_SKILLS[0]);
 
     if(edit_open) {
-        // اسم المهارة الحالية
-        print_skill_name(skill_idx, 10, 22, OLED_FONT_SMALL);
-        // اختصار المهارة
-        print(10, 40, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
-        print_shortcut_name(get_skill_shortcut(skill_idx), 50, 40, OLED_FONT_SMALL);
+        // اسم المهارة في السطر الأول
+        print_skill_name(skill_real_idx(), 10, 18, OLED_FONT_SMALL);
+
+        // Short و Dbl، المؤشر > على المختار
+        if(!skill_field_is_dbl()) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
+        if(skill_real_idx() == 0)      print_shortcut_name(sk_mcgeady_l, 58, 29, OLED_FONT_SMALL);
+        else if(skill_real_idx() == 1) print_shortcut_name(sk_mcgeady_r, 58, 29, OLED_FONT_SMALL);
+        else                           print_shortcut_name(sk_flair_nut, 58, 29, OLED_FONT_SMALL);
+
+        if(skill_field_is_dbl())  print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+        print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_DBL_LBL[0]);
+        if(skill_real_idx() == 0)      print_dbl_btn_name(sk_mcgeady_l_dbl, 58, 40, OLED_FONT_SMALL);
+        else if(skill_real_idx() == 1) print_dbl_btn_name(sk_mcgeady_r_dbl, 58, 40, OLED_FONT_SMALL);
+        else                           print_dbl_btn_name(sk_flair_nut_dbl, 58, 40, OLED_FONT_SMALL);
     } else {
         if(mod_skills > 0) {
             print(center_x(7, OLED_FONT_SMALL_WIDTH), 30,
@@ -1242,4 +1386,8 @@ function save_settings() {
     set_pvar(SPVAR_31, sk_mcgeady_r);
     set_pvar(SPVAR_32, sk_flair_nut);
     set_pvar(SPVAR_42, finesse_dbl_btn);
+    set_pvar(SPVAR_43, trivela_dbl_btn);
+    set_pvar(SPVAR_44, sk_mcgeady_l_dbl);
+    set_pvar(SPVAR_45, sk_mcgeady_r_dbl);
+    set_pvar(SPVAR_46, sk_flair_nut_dbl);
 }
