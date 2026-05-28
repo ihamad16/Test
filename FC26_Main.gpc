@@ -541,7 +541,7 @@ combo SkillFlairNutmegSmart {
     set_val(PS4_SQUARE, 100);
     wait(200);
     set_val(PS4_SQUARE, 0);
-    wait(100);
+    wait(50);
 
     // Step 3: R2 + L2 ضغطة سريعة (تلغي التسديدة - Fake Shot)
     set_val(PS4_R2, 100);
