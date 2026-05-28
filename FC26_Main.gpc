@@ -543,7 +543,7 @@ combo SkillFlairNutmegSmart {
     set_val(PS4_L1, 0);
     set_val(PS4_R1, 0);
     set_val(PS4_RY, 0);
-    wait(200);
+    wait(100);
 
     // Step 2: SQUARE wind-up (يبدأ التسديدة)
     set_val(PS4_SQUARE, 100);
