@@ -44,7 +44,7 @@ define MAX_MODS         = 4;
 define TGT_DEFAULT      = 8;
 define SH_DISABLED      = 19;       // 0..10 = أزرار، 11..14 = سحبات، 15..18 = D-pad، 19 = Off
 define SWIPE_THRESHOLD  = 30;       // الحد الأدنى لاعتبار الحركة سحبة
-define SKILLS_COUNT     = 3;
+define SKILLS_COUNT     = 4;
 define DBL_TAP_WINDOW   = 300;      // النافذة الزمنية للدبل تاب (ms)
 define DBL_OFF          = 19;       // 0..10 = أزرار، 11..14 = سحبات، 15..18 = D-pad، 19 = Off
 
@@ -115,6 +115,14 @@ int sk_mcgeady_r_ca   = 19;
 int sk_mcgeady_r_cb   = 19;
 int sk_flair_nut_ca   = 19;
 int sk_flair_nut_cb   = 19;
+// La Croqueta: مهارة واحدة
+int sk_croqueta       = 19;
+int sk_croqueta_dbl   = 19;
+int sk_croqueta_ca    = 19;
+int sk_croqueta_cb    = 19;
+int sk_croqueta_fake  = 0;
+int sk_croq_dbl_timer = 0;
+int sk_croq_dbl_count = 0;
 int nutmeg_gap1       = 100;   // Gap بعد Step 1 (0..500 ms)
 int nutmeg_gap2       = 50;    // Gap بعد Step 2 (0..500 ms)
 int sk_mcg_l_fake     = 0;     // 0=Off, 1=On
@@ -204,6 +212,7 @@ const string STR_ON_TXT      = "ON";
 const string SK_MCGEADY_L    = "McGeady L";
 const string SK_MCGEADY_R    = "McGeady R";
 const string SK_FLAIR_NUT    = "Flair Nutmeg";
+const string SK_CROQUETA     = "La Croqueta";
 
 const string STR_PWR_LBL    = "Power:";
 const string STR_BTN_LBL    = "Btn:";
@@ -239,7 +248,7 @@ const string BTN_DRG  = "D.Rg";
 init {
     // علم النسخة: SPVAR_50 لازم يساوي 42 إذا تم تهيئة الإعدادات الافتراضية مسبقاً.
     // لو لا، نكتب الـ shortcut defaults يدوياً (لأن Cronus يرجع 0 للـ PVAR غير المُهيّأ).
-    if(get_pvar(SPVAR_50, 0, 99, 0) != 48) {
+    if(get_pvar(SPVAR_50, 0, 99, 0) != 49) {
         set_pvar(SPVAR_40, 19);  // finesse_shortcut = Off
         set_pvar(SPVAR_41, 19);  // trivela_shortcut = Off
         set_pvar(SPVAR_42, 19);  // finesse_dbl_btn = Off
@@ -261,7 +270,12 @@ init {
         set_pvar(SPVAR_49, 0);   // sk_mcg_l_fake = Off
         set_pvar(SPVAR_51, 0);   // sk_mcg_r_fake = Off
         set_pvar(SPVAR_52, 0);   // sk_flair_fake = Off
-        set_pvar(SPVAR_50, 48);  // علامة تم تهيئة الافتراضيات
+        set_pvar(SPVAR_53, 19);  // sk_croqueta = Off
+        set_pvar(SPVAR_54, 19);  // sk_croqueta_dbl = Off
+        set_pvar(SPVAR_55, 19);  // sk_croqueta_ca = Off
+        set_pvar(SPVAR_56, 19);  // sk_croqueta_cb = Off
+        set_pvar(SPVAR_57, 0);   // sk_croqueta_fake = Off
+        set_pvar(SPVAR_50, 49);  // علامة تم تهيئة الافتراضيات
     }
 
     mod_sprint       = get_pvar(SPVAR_1,  0, 1,    1);
@@ -301,6 +315,11 @@ init {
     sk_mcg_l_fake    = get_pvar(SPVAR_49, 0, 1,    0);
     sk_mcg_r_fake    = get_pvar(SPVAR_51, 0, 1,    0);
     sk_flair_fake    = get_pvar(SPVAR_52, 0, 1,    0);
+    sk_croqueta      = get_pvar(SPVAR_53, 0, 19,   19);
+    sk_croqueta_dbl  = get_pvar(SPVAR_54, 0, 19,   19);
+    sk_croqueta_ca   = get_pvar(SPVAR_55, 0, 19,   19);
+    sk_croqueta_cb   = get_pvar(SPVAR_56, 0, 19,   19);
+    sk_croqueta_fake = get_pvar(SPVAR_57, 0, 1,    0);
 }
 
 //==============================================================================
@@ -618,6 +637,32 @@ function fire_flair_nut() {
     }
 }
 
+// La Croqueta: L1 + RS فليك 90° يمين نسبي للاعب لمدة 100ms
+combo SkillLaCroquetaSmart {
+    set_val(PS4_L1, 100);
+    set_val(PS4_RX, spin_step1_x);
+    set_val(PS4_RY, spin_step1_y);
+    wait(100);
+    set_val(PS4_L1, 0);
+    set_val(PS4_RX, 0);
+    set_val(PS4_RY, 0);
+    wait(60);
+}
+
+function fire_croqueta() {
+    detect_ls_zone();
+    if(ls_zone >= 0) {
+        transform_to_world(100, 0);  // 90° يمين نسبي للاعب
+        spin_step1_x = rot_world_x;
+        spin_step1_y = rot_world_y;
+        combo_run(SkillLaCroquetaSmart);
+        if(sk_croqueta_fake) {
+            fake_pending = 1;
+            fake_delay = 100;
+        }
+    }
+}
+
 //==============================================================================
 //  SKILLS HANDLERS
 //==============================================================================
@@ -634,16 +679,19 @@ function run_skills() {
     if(check_shortcut_press(sk_mcgeady_l)) fire_mcgeady_l();
     if(check_shortcut_press(sk_mcgeady_r)) fire_mcgeady_r();
     if(check_shortcut_press(sk_flair_nut)) fire_flair_nut();
+    if(check_shortcut_press(sk_croqueta))  fire_croqueta();
 
     // Dbl-Tap لكل مهارة (نمط الفينس)
     if(check_sk_mcg_l_dbl_tap())   fire_mcgeady_l();
     if(check_sk_mcg_r_dbl_tap())   fire_mcgeady_r();
     if(check_sk_flair_dbl_tap())   fire_flair_nut();
+    if(check_sk_croqueta_dbl_tap()) fire_croqueta();
 
     // Chord (زرين معاً) لكل مهارة
     if(check_chord(sk_mcgeady_l_ca, sk_mcgeady_l_cb)) fire_mcgeady_l();
     if(check_chord(sk_mcgeady_r_ca, sk_mcgeady_r_cb)) fire_mcgeady_r();
     if(check_chord(sk_flair_nut_ca, sk_flair_nut_cb)) fire_flair_nut();
+    if(check_chord(sk_croqueta_ca, sk_croqueta_cb))   fire_croqueta();
 }
 
 function check_shortcut_press(sh_idx) {
@@ -674,9 +722,11 @@ function any_skill_uses_swipe() {
     if(sk_mcgeady_l     >= 11 && sk_mcgeady_l     <= 14) return 1;
     if(sk_mcgeady_r     >= 11 && sk_mcgeady_r     <= 14) return 1;
     if(sk_flair_nut     >= 11 && sk_flair_nut     <= 14) return 1;
+    if(sk_croqueta      >= 11 && sk_croqueta      <= 14) return 1;
     if(sk_mcgeady_l_dbl >= 11 && sk_mcgeady_l_dbl <= 14) return 1;
     if(sk_mcgeady_r_dbl >= 11 && sk_mcgeady_r_dbl <= 14) return 1;
     if(sk_flair_nut_dbl >= 11 && sk_flair_nut_dbl <= 14) return 1;
+    if(sk_croqueta_dbl  >= 11 && sk_croqueta_dbl  <= 14) return 1;
     return 0;
 }
 
@@ -702,23 +752,27 @@ function get_skill_field_value() {
         if(skill_idx == 0) return sk_mcgeady_l;
         if(skill_idx == 1) return sk_mcgeady_r;
         if(skill_idx == 2) return sk_flair_nut;
+        if(skill_idx == 3) return sk_croqueta;
     } else if(skill_field == 1) {
         if(skill_idx == 0) return sk_mcgeady_l_dbl;
         if(skill_idx == 1) return sk_mcgeady_r_dbl;
         if(skill_idx == 2) return sk_flair_nut_dbl;
+        if(skill_idx == 3) return sk_croqueta_dbl;
     } else if(skill_field == 2) {
         if(skill_idx == 0) return sk_mcgeady_l_ca;
         if(skill_idx == 1) return sk_mcgeady_r_ca;
         if(skill_idx == 2) return sk_flair_nut_ca;
+        if(skill_idx == 3) return sk_croqueta_ca;
     } else if(skill_field == 3) {
         if(skill_idx == 0) return sk_mcgeady_l_cb;
         if(skill_idx == 1) return sk_mcgeady_r_cb;
         if(skill_idx == 2) return sk_flair_nut_cb;
+        if(skill_idx == 3) return sk_croqueta_cb;
     } else if(skill_field == 4) {
-        // Fake (ON/OFF لكل مهارة)
         if(skill_idx == 0) return sk_mcg_l_fake;
         if(skill_idx == 1) return sk_mcg_r_fake;
         if(skill_idx == 2) return sk_flair_fake;
+        if(skill_idx == 3) return sk_croqueta_fake;
     } else if(skill_field == 5) {
         return nutmeg_gap1;
     } else if(skill_field == 6) {
@@ -732,22 +786,27 @@ function set_skill_field_value(val) {
         if(skill_idx == 0)      sk_mcgeady_l = val;
         else if(skill_idx == 1) sk_mcgeady_r = val;
         else if(skill_idx == 2) sk_flair_nut = val;
+        else if(skill_idx == 3) sk_croqueta  = val;
     } else if(skill_field == 1) {
         if(skill_idx == 0)      sk_mcgeady_l_dbl = val;
         else if(skill_idx == 1) sk_mcgeady_r_dbl = val;
         else if(skill_idx == 2) sk_flair_nut_dbl = val;
+        else if(skill_idx == 3) sk_croqueta_dbl  = val;
     } else if(skill_field == 2) {
         if(skill_idx == 0)      sk_mcgeady_l_ca = val;
         else if(skill_idx == 1) sk_mcgeady_r_ca = val;
         else if(skill_idx == 2) sk_flair_nut_ca = val;
+        else if(skill_idx == 3) sk_croqueta_ca  = val;
     } else if(skill_field == 3) {
         if(skill_idx == 0)      sk_mcgeady_l_cb = val;
         else if(skill_idx == 1) sk_mcgeady_r_cb = val;
         else if(skill_idx == 2) sk_flair_nut_cb = val;
+        else if(skill_idx == 3) sk_croqueta_cb  = val;
     } else if(skill_field == 4) {
         if(skill_idx == 0)      sk_mcg_l_fake = val;
         else if(skill_idx == 1) sk_mcg_r_fake = val;
         else if(skill_idx == 2) sk_flair_fake = val;
+        else if(skill_idx == 3) sk_croqueta_fake = val;
     } else if(skill_field == 5) {
         nutmeg_gap1 = val;
     } else if(skill_field == 6) {
@@ -793,6 +852,7 @@ function print_skill_name(idx, x, y, font) {
     if(idx == 0)      print(x, y, font, OLED_WHITE, SK_MCGEADY_L[0]);
     else if(idx == 1) print(x, y, font, OLED_WHITE, SK_MCGEADY_R[0]);
     else if(idx == 2) print(x, y, font, OLED_WHITE, SK_FLAIR_NUT[0]);
+    else if(idx == 3) print(x, y, font, OLED_WHITE, SK_CROQUETA[0]);
 }
 
 function check_trivela_shortcut() {
@@ -1066,6 +1126,24 @@ function check_sk_mcg_r_dbl_tap() {
             return 1;
         }
         sk_mcg_r_dbl_timer = DBL_TAP_WINDOW;
+    }
+    return 0;
+}
+
+function check_sk_croqueta_dbl_tap() {
+    if(sk_croqueta_dbl == DBL_OFF) return 0;
+    if(sk_croq_dbl_timer > 0) {
+        sk_croq_dbl_timer = sk_croq_dbl_timer - get_rtime();
+        if(sk_croq_dbl_timer <= 0) sk_croq_dbl_count = 0;
+    }
+    if(is_dbl_btn_pressed(sk_croqueta_dbl)) {
+        sk_croq_dbl_count = sk_croq_dbl_count + 1;
+        if(sk_croq_dbl_count >= 2) {
+            sk_croq_dbl_count = 0;
+            sk_croq_dbl_timer = 0;
+            return 1;
+        }
+        sk_croq_dbl_timer = DBL_TAP_WINDOW;
     }
     return 0;
 }
@@ -1441,26 +1519,30 @@ function draw_skills_menu() {
             print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_SH_LBL[0]);
             if(skill_idx == 0)      print_shortcut_name(sk_mcgeady_l, 58, 29, OLED_FONT_SMALL);
             else if(skill_idx == 1) print_shortcut_name(sk_mcgeady_r, 58, 29, OLED_FONT_SMALL);
-            else                    print_shortcut_name(sk_flair_nut, 58, 29, OLED_FONT_SMALL);
+            else if(skill_idx == 2) print_shortcut_name(sk_flair_nut, 58, 29, OLED_FONT_SMALL);
+            else                    print_shortcut_name(sk_croqueta,  58, 29, OLED_FONT_SMALL);
 
             if(skill_field == 1) print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
             print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_DBL_LBL[0]);
             if(skill_idx == 0)      print_dbl_btn_name(sk_mcgeady_l_dbl, 58, 40, OLED_FONT_SMALL);
             else if(skill_idx == 1) print_dbl_btn_name(sk_mcgeady_r_dbl, 58, 40, OLED_FONT_SMALL);
-            else                    print_dbl_btn_name(sk_flair_nut_dbl, 58, 40, OLED_FONT_SMALL);
+            else if(skill_idx == 2) print_dbl_btn_name(sk_flair_nut_dbl, 58, 40, OLED_FONT_SMALL);
+            else                    print_dbl_btn_name(sk_croqueta_dbl,  58, 40, OLED_FONT_SMALL);
         } else if(skill_field <= 3) {
             // عرض ChordA + ChordB
             if(skill_field == 2) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
             print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CA_LBL[0]);
             if(skill_idx == 0)      print_dbl_btn_name(sk_mcgeady_l_ca, 58, 29, OLED_FONT_SMALL);
             else if(skill_idx == 1) print_dbl_btn_name(sk_mcgeady_r_ca, 58, 29, OLED_FONT_SMALL);
-            else                    print_dbl_btn_name(sk_flair_nut_ca, 58, 29, OLED_FONT_SMALL);
+            else if(skill_idx == 2) print_dbl_btn_name(sk_flair_nut_ca, 58, 29, OLED_FONT_SMALL);
+            else                    print_dbl_btn_name(sk_croqueta_ca,  58, 29, OLED_FONT_SMALL);
 
             if(skill_field == 3) print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
             print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CB_LBL[0]);
             if(skill_idx == 0)      print_dbl_btn_name(sk_mcgeady_l_cb, 58, 40, OLED_FONT_SMALL);
             else if(skill_idx == 1) print_dbl_btn_name(sk_mcgeady_r_cb, 58, 40, OLED_FONT_SMALL);
-            else                    print_dbl_btn_name(sk_flair_nut_cb, 58, 40, OLED_FONT_SMALL);
+            else if(skill_idx == 2) print_dbl_btn_name(sk_flair_nut_cb, 58, 40, OLED_FONT_SMALL);
+            else                    print_dbl_btn_name(sk_croqueta_cb,  58, 40, OLED_FONT_SMALL);
         } else if(skill_field == 4) {
             // عرض Fake وحده (لكل المهارات)
             print(2, 34, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
@@ -1649,4 +1731,9 @@ function save_settings() {
     set_pvar(SPVAR_49, sk_mcg_l_fake);
     set_pvar(SPVAR_51, sk_mcg_r_fake);
     set_pvar(SPVAR_52, sk_flair_fake);
+    set_pvar(SPVAR_53, sk_croqueta);
+    set_pvar(SPVAR_54, sk_croqueta_dbl);
+    set_pvar(SPVAR_55, sk_croqueta_ca);
+    set_pvar(SPVAR_56, sk_croqueta_cb);
+    set_pvar(SPVAR_57, sk_croqueta_fake);
 }
