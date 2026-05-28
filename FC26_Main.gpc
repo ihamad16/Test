@@ -535,13 +535,13 @@ combo SkillFlairNutmegSmart {
     wait(100);
     set_val(PS4_L1, 0);
     set_val(PS4_R1, 0);
-    wait(50);
+    wait(100);
 
     // Step 2: SQUARE wind-up (يبدأ التسديدة)
     set_val(PS4_SQUARE, 100);
     wait(200);
     set_val(PS4_SQUARE, 0);
-    wait(50);
+    wait(100);
 
     // Step 3: R2 + L2 ضغطة سريعة (تلغي التسديدة - Fake Shot)
     set_val(PS4_R2, 100);
