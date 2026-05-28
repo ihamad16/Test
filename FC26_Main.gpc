@@ -115,6 +115,8 @@ int sk_mcgeady_r_ca   = 19;
 int sk_mcgeady_r_cb   = 19;
 int sk_flair_nut_ca   = 19;
 int sk_flair_nut_cb   = 19;
+int nutmeg_gap1       = 100;   // Gap بعد Step 1 (0..500 ms)
+int nutmeg_gap2       = 50;    // Gap بعد Step 2 (0..500 ms)
 // Per-skill dbl-tap timer/count (نمط الفينس)
 int sk_mcg_l_dbl_timer = 0;
 int sk_mcg_l_dbl_count = 0;
@@ -188,6 +190,8 @@ const string STR_SK_LBL      = "Sk:";
 const string STR_DBL_LBL     = "Dbl:";
 const string STR_CA_LBL      = "ChdA:";
 const string STR_CB_LBL      = "ChdB:";
+const string STR_GAP1_LBL    = "Gap1:";
+const string STR_GAP2_LBL    = "Gap2:";
 
 // أسماء المهارات
 const string SK_MCGEADY_L    = "McGeady L";
@@ -228,7 +232,7 @@ const string BTN_DRG  = "D.Rg";
 init {
     // علم النسخة: SPVAR_50 لازم يساوي 42 إذا تم تهيئة الإعدادات الافتراضية مسبقاً.
     // لو لا، نكتب الـ shortcut defaults يدوياً (لأن Cronus يرجع 0 للـ PVAR غير المُهيّأ).
-    if(get_pvar(SPVAR_50, 0, 99, 0) != 46) {
+    if(get_pvar(SPVAR_50, 0, 99, 0) != 47) {
         set_pvar(SPVAR_40, 19);  // finesse_shortcut = Off
         set_pvar(SPVAR_41, 19);  // trivela_shortcut = Off
         set_pvar(SPVAR_42, 19);  // finesse_dbl_btn = Off
@@ -245,7 +249,9 @@ init {
         set_pvar(SPVAR_36, 19);  // sk_mcgeady_r_cb = Off
         set_pvar(SPVAR_37, 19);  // sk_flair_nut_ca = Off
         set_pvar(SPVAR_38, 19);  // sk_flair_nut_cb = Off
-        set_pvar(SPVAR_50, 46);  // علامة تم تهيئة الافتراضيات
+        set_pvar(SPVAR_47, 100); // nutmeg_gap1 = 100
+        set_pvar(SPVAR_48, 50);  // nutmeg_gap2 = 50
+        set_pvar(SPVAR_50, 47);  // علامة تم تهيئة الافتراضيات
     }
 
     mod_sprint       = get_pvar(SPVAR_1,  0, 1,    1);
@@ -280,6 +286,8 @@ init {
     sk_mcgeady_r_cb  = get_pvar(SPVAR_36, 0, 19,   19);
     sk_flair_nut_ca  = get_pvar(SPVAR_37, 0, 19,   19);
     sk_flair_nut_cb  = get_pvar(SPVAR_38, 0, 19,   19);
+    nutmeg_gap1      = get_pvar(SPVAR_47, 0, 500, 100);
+    nutmeg_gap2      = get_pvar(SPVAR_48, 0, 500, 50);
 }
 
 //==============================================================================
@@ -563,13 +571,13 @@ combo SkillFlairNutmegSmart {
     set_val(PS4_L1, 0);
     set_val(PS4_R1, 0);
     set_val(PS4_RY, 0);
-    wait(100);
+    wait(nutmeg_gap1);
 
     // Step 2: SQUARE wind-up (يبدأ التسديدة)
     set_val(PS4_SQUARE, 100);
     wait(200);
     set_val(PS4_SQUARE, 0);
-    wait(50);
+    wait(nutmeg_gap2);
 
     // Step 3: R2 + L2 ضغطة سريعة (تلغي التسديدة - Fake Shot)
     set_val(PS4_R2, 100);
@@ -646,6 +654,12 @@ function skill_field_is_dbl() {
     return skill_field;
 }
 
+// أقصى حقل صالح للمهارة الحالية (Flair Nutmeg عنده Gap1/Gap2 إضافية)
+function max_skill_field() {
+    if(skill_idx == 2) return 5;  // Flair Nutmeg: Short, Dbl, ChdA, ChdB, Gap1, Gap2
+    return 3;                     // McGeady: Short, Dbl, ChdA, ChdB
+}
+
 function get_skill_field_value() {
     if(skill_field == 0) {
         if(skill_idx == 0) return sk_mcgeady_l;
@@ -659,10 +673,14 @@ function get_skill_field_value() {
         if(skill_idx == 0) return sk_mcgeady_l_ca;
         if(skill_idx == 1) return sk_mcgeady_r_ca;
         if(skill_idx == 2) return sk_flair_nut_ca;
-    } else {
+    } else if(skill_field == 3) {
         if(skill_idx == 0) return sk_mcgeady_l_cb;
         if(skill_idx == 1) return sk_mcgeady_r_cb;
         if(skill_idx == 2) return sk_flair_nut_cb;
+    } else if(skill_field == 4) {
+        return nutmeg_gap1;
+    } else if(skill_field == 5) {
+        return nutmeg_gap2;
     }
     return 0;
 }
@@ -680,10 +698,14 @@ function set_skill_field_value(val) {
         if(skill_idx == 0)      sk_mcgeady_l_ca = val;
         else if(skill_idx == 1) sk_mcgeady_r_ca = val;
         else if(skill_idx == 2) sk_flair_nut_ca = val;
-    } else {
+    } else if(skill_field == 3) {
         if(skill_idx == 0)      sk_mcgeady_l_cb = val;
         else if(skill_idx == 1) sk_mcgeady_r_cb = val;
         else if(skill_idx == 2) sk_flair_nut_cb = val;
+    } else if(skill_field == 4) {
+        nutmeg_gap1 = val;
+    } else if(skill_field == 5) {
+        nutmeg_gap2 = val;
     }
 }
 
@@ -706,6 +728,11 @@ function cycle_skill_field(dir) {
         cycle_tmp = get_skill_field_value() + dir;
         if(cycle_tmp > SH_DISABLED) cycle_tmp = 0;
         if(cycle_tmp < 0) cycle_tmp = SH_DISABLED;
+    } else if(skill_field >= 4) {
+        // Gap1/Gap2: قيمة رقمية 0..500 بخطوة ±5
+        cycle_tmp = get_skill_field_value() + (dir * 5);
+        if(cycle_tmp > 500) cycle_tmp = 500;
+        if(cycle_tmp < 0) cycle_tmp = 0;
     } else {
         // Dbl/ChordA/ChordB: تخطي السحبات
         cycle_tmp = cycle_no_swipes(get_skill_field_value(), dir);
@@ -1175,25 +1202,27 @@ function handle_menu_input() {
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
         } else if(menu_idx == 4) {
-            // Skills: L1/R1 تنقل بين المهارات | ↑/↓ Short↔Dbl | ←/→ تغيير قيمة
+            // Skills: L1/R1 تنقل بين المهارات | ↑/↓ بين الحقول | ←/→ تغيير قيمة
             if(event_press(PS4_R1)) {
                 skill_idx = skill_idx + 1;
                 if(skill_idx > SKILLS_COUNT - 1) skill_idx = 0;
+                if(skill_field > max_skill_field()) skill_field = 0;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_L1)) {
                 skill_idx = skill_idx - 1;
                 if(skill_idx < 0) skill_idx = SKILLS_COUNT - 1;
+                if(skill_field > max_skill_field()) skill_field = 0;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_DOWN)) {
                 skill_field = skill_field + 1;
-                if(skill_field > 3) skill_field = 0;
+                if(skill_field > max_skill_field()) skill_field = 0;
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_UP)) {
                 skill_field = skill_field - 1;
-                if(skill_field < 0) skill_field = 3;
+                if(skill_field < 0) skill_field = max_skill_field();
                 need_redraw = TRUE; menu_timer = MENU_TIMEOUT;
             }
             if(event_press(PS4_RIGHT)) {
@@ -1370,7 +1399,7 @@ function draw_skills_menu() {
             if(skill_idx == 0)      print_dbl_btn_name(sk_mcgeady_l_dbl, 58, 40, OLED_FONT_SMALL);
             else if(skill_idx == 1) print_dbl_btn_name(sk_mcgeady_r_dbl, 58, 40, OLED_FONT_SMALL);
             else                    print_dbl_btn_name(sk_flair_nut_dbl, 58, 40, OLED_FONT_SMALL);
-        } else {
+        } else if(skill_field <= 3) {
             // عرض ChordA + ChordB
             if(skill_field == 2) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
             print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CA_LBL[0]);
@@ -1383,6 +1412,15 @@ function draw_skills_menu() {
             if(skill_idx == 0)      print_dbl_btn_name(sk_mcgeady_l_cb, 58, 40, OLED_FONT_SMALL);
             else if(skill_idx == 1) print_dbl_btn_name(sk_mcgeady_r_cb, 58, 40, OLED_FONT_SMALL);
             else                    print_dbl_btn_name(sk_flair_nut_cb, 58, 40, OLED_FONT_SMALL);
+        } else {
+            // عرض Gap1 + Gap2 (Flair Nutmeg فقط)
+            if(skill_field == 4) print(2, 29, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+            print(12, 29, OLED_FONT_SMALL, OLED_WHITE, STR_GAP1_LBL[0]);
+            print_num_at(nutmeg_gap1, 58, 29, OLED_FONT_SMALL);
+
+            if(skill_field == 5) print(2, 40, OLED_FONT_SMALL, OLED_WHITE, STR_CURSOR[0]);
+            print(12, 40, OLED_FONT_SMALL, OLED_WHITE, STR_GAP2_LBL[0]);
+            print_num_at(nutmeg_gap2, 58, 40, OLED_FONT_SMALL);
         }
     } else {
         if(mod_skills > 0) {
@@ -1548,4 +1586,6 @@ function save_settings() {
     set_pvar(SPVAR_36, sk_mcgeady_r_cb);
     set_pvar(SPVAR_37, sk_flair_nut_ca);
     set_pvar(SPVAR_38, sk_flair_nut_cb);
+    set_pvar(SPVAR_47, nutmeg_gap1);
+    set_pvar(SPVAR_48, nutmeg_gap2);
 }
